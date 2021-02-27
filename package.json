@@ -2,8 +2,7 @@
   "name": "@viperswap/contracts",
   "version": "1.0.0",
   "license": "MIT",
-  "types": "./types/index.ts",
-  "description": "Token + Liquidity Mining contracts for ViperSwap & the Viper Protocol",
+  "description": "🐍 Token + 🧑‍🌾 Liquidity Mining contracts for ViperSwap & the Viper Protocol",
   "files": [
     "abi",
     "artifacts",
