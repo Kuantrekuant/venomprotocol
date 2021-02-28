@@ -8,11 +8,11 @@ import "./Authorizable.sol";
 
 // ViperToken with Governance.
 contract ViperToken is ERC20("ViperToken", "VIPER"), Ownable, Authorizable {
-    uint256 private _cap = 1000000000e18; //1 billion
+    uint256 private _cap = 500000000e18; //500m
     uint256 private _totalLock;
     uint256 public lockFromBlock;
     uint256 public lockToBlock;
-    uint256 public manualMintLimit = 10000e18;
+    uint256 public manualMintLimit = 50000e18; //50k
     uint256 public manualMinted = 0;
 
     mapping(address => uint256) private _locks;

@@ -72,110 +72,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
     // Viper tokens created per block.
     uint256 public REWARD_PER_BLOCK;
     // Bonus muliplier for early Viper makers.
-    uint256[] public REWARD_MULTIPLIER = [
-        4096,
-        2048,
-        2048,
-        1024,
-        1024,
-        512,
-        512,
-        256,
-        256,
-        256,
-        256,
-        256,
-        256,
-        256,
-        256,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        16,
-        8,
-        8,
-        8,
-        8,
-        32,
-        32,
-        64,
-        64,
-        64,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        256,
-        256,
-        256,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        128,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        32,
-        16,
-        16,
-        16,
-        16,
-        8,
-        8,
-        8,
-        4,
-        2,
-        1,
-        0
-    ];
+    uint256[] public REWARD_MULTIPLIER; // init in constructor function
     uint256[] public HALVING_AT_BLOCK; // init in constructor function
     uint256[] public blockDeltaStartStage;
     uint256[] public blockDeltaEndStage;
@@ -228,6 +125,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         uint256 _halvingAfterBlock,
         uint256 _userDepFee,
         uint256 _devDepFee,
+        uint256[] memory _rewardMultiplier,
         uint256[] memory _blockDeltaStartStage,
         uint256[] memory _blockDeltaEndStage,
         uint256[] memory _userFeeStage,
@@ -242,6 +140,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         START_BLOCK = _startBlock;
         userDepFee = _userDepFee;
         devDepFee = _devDepFee;
+        REWARD_MULTIPLIER = _rewardMultiplier;
         blockDeltaStartStage = _blockDeltaStartStage;
         blockDeltaEndStage = _blockDeltaEndStage;
         userFeeStage = _userFeeStage;
@@ -465,7 +364,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         _harvest(_pid);
     }
 
-    // lock 95% of reward if it come from bounus time
+    // lock 95% of reward if it comes from bonus time
     function _harvest(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];

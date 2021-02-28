@@ -38,15 +38,15 @@ describe('MasterHerpetologist::Referrals', () => {
     await lp.transfer(carol.address, expandTo18Decimals(1000))
 
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-    const rewardsPerBlock = expandTo18Decimals(1)
+    const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    chef = await deployMasterHerpetologist(wallets, viperToken, rewardsPerBlock, rewardsStartAtBlock, 1000)
+    chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
     await viperToken.transferOwnership(chef.address)
 
     expect(await viperToken.totalSupply()).to.equal(0)
 
-    await chef.add(32000, lp.address, true)
+    await chef.add(rewardsPerBlock, lp.address, true)
   })
 
   it("should properly track referrals", async function () {    

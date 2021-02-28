@@ -29,12 +29,13 @@ describe('MasterHerpetologist::State', () => {
   // Bao has modified FINISH_BONUS_AT_BLOCK since the inception of the contract - values will differ vs original contract instantiation
   const rewardsStartBlock = 11420726
   const halvingAfterBlockCount = 45360 // Ethereum blocks per week, based on ~13s block time
-  const expectedFinishBonusAtBlock = 16002086
-  const rewardMultipliers = [4096,2048,2048,1024,1024,512,512,256,256,256,256,256,256,256,256,128,128,128,128,128,128,128,128,128,64,64,64,64,64,64,64,64,64,64,64,16,8,8,8,8,32,32,64,64,64,128,128,128,128,128,128,128,128,128,128,256,256,256,128,128,128,128,128,128,128,128,128,64,64,64,64,64,64,64,64,64,64,64,32,32,32,32,32,32,32,32,32,32,32,32,32,16,16,16,16,8,8,8,4,2,1,0]
-
   const lockFromBlock = 13766564
   const lockToBlock = 20960714
-
+  
+  // This has been modified - contains two more multipliers (104 vs 102) compared to original Bao values.
+  // Multipliers have also been significantly modified to suit VIPER:s emission model
+  const rewardMultipliers = [256,128,64,32,32,16,16,8,8,8,8,8,8,8,8,8,8,8,8,8,8,4,4,4,4,4,4,2,2,2,2,2,1,1,1,1,1,1,2,2,2,2,2,4,4,4,8,8,8,8,8,16,16,16,16,16,16,16,16,16,16,8,8,8,8,8,8,4,4,2,2,1,1,1,1,1,1,2,2,4,4,4,4,8,8,8,8,8,16,16,32,32,32,32,16,8,4,2,1,1,1,1,2,2];
+  const expectedFinishBonusAtBlock = 16092806
   const halvingAtBlocks: BigNumber[] = []
 
   let viperToken: Contract
@@ -66,7 +67,7 @@ describe('MasterHerpetologist::State', () => {
     this.timeout(0)
     let calculatedFinishBonusAtBlock: BigNumber
 
-    expect(rewardMultipliers.length).to.equal(102)
+    expect(rewardMultipliers.length).to.equal(104)
 
     for (let i = 0; i < rewardMultipliers.length - 1; i++) {
       expect(await chef.REWARD_MULTIPLIER(i)).to.equal(rewardMultipliers[i])

@@ -9,9 +9,9 @@ import ViperToken from '../build/ViperToken.json'
 chai.use(solidity)
 
 const TOTAL_SUPPLY = expandTo18Decimals(1000000)
-const TOTAL_CAP = expandTo18Decimals(1000000000)
+const TOTAL_CAP = expandTo18Decimals(500000000)
 const REGULAR_MINT_AMOUNT = expandTo18Decimals(20000)
-const MANUAL_MINT_LIMIT = expandTo18Decimals(10000)
+const MANUAL_MINT_LIMIT = expandTo18Decimals(50000)
 const NO_MANUAL_MINTED = 0
 const MANUAL_MINT_AMOUNT = expandTo18Decimals(999)
 const TEST_AMOUNT = expandTo18Decimals(10)

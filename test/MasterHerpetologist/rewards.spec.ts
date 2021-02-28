@@ -62,10 +62,11 @@ describe('MasterHerpetologist::Rewards', () => {
 
     it("should allow emergency withdraw", async function () {
       this.timeout(0)
-      // 100 per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(100), 100, 1000)
+      // 1 per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
+      const rewardsPerBlock = 1
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 100, 1000)
 
-      await chef.add(100, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
 
       await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
 
@@ -84,15 +85,15 @@ describe('MasterHerpetologist::Rewards', () => {
 
     it("should not pay out VIPER rewards before farming has started", async function () {
       // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-      const rewardsPerBlock = expandTo18Decimals(1)
+      const rewardsPerBlock = 1
       const rewardsStartAtBlock = 100
-      const chef = await deployMasterHerpetologist(wallets, viperToken, rewardsPerBlock, rewardsStartAtBlock, 1000)
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
       await viperToken.transferOwnership(chef.address)
 
       expect(await viperToken.totalSupply()).to.equal(0)
 
-      await chef.add(32000, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
 
       expect(await viperToken.totalSupply()).to.equal(0)
 
@@ -115,38 +116,80 @@ describe('MasterHerpetologist::Rewards', () => {
       const debugMessages = false
 
       // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-      const rewardsPerBlock = expandTo18Decimals(1)
+      const rewardsPerBlock = 1
       const rewardsStartAtBlock = 100
-      const chef = await deployMasterHerpetologist(wallets, viperToken, rewardsPerBlock, rewardsStartAtBlock, 1000)
+      const rewardsMultiplierForSecondPool = 5
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
       await viperToken.transferOwnership(chef.address)
 
       expect(await viperToken.totalSupply()).to.equal(0)
 
-      await chef.add(32000, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
+
       await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
       await chef.connect(bob).deposit(0, expandTo18Decimals(100), ZERO_ADDRESS)
 
-      // Advance to the start of the rewards period + 1 block
-      await advanceBlockTo(provider, rewardsStartAtBlock + 1)
+      // Advance to the start of the rewards period
+      await advanceBlockTo(provider, rewardsStartAtBlock)
+      
+      const currentBlock = await latestBlock(provider)
+      const activeMultiplier = await chef.getMultiplier(currentBlock.number, currentBlock.number+1)
+      const firstMultiplier = await chef.REWARD_MULTIPLIER(0)
+      expect(activeMultiplier).to.equal(firstMultiplier)
+
+      const rewardPerBlock = await chef.REWARD_PER_BLOCK()
+      expect(rewardPerBlock).to.equal(rewardPerBlock)
 
       // block ~101 - rewards have started & locking period has started
       // 95% rewards should now be locked until block 500
-
       await expect(chef.connect(bob).claimReward(0))
         .to.emit(chef, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
-        .withArgs(bob.address, 0, '8130560000000000000000', '7724032000000000000000')
+        .withArgs(bob.address, 0, '254080000000000000000', '241376000000000000000')
       
-      expect(await viperToken.totalSupply()).to.equal('9830400000000000000000')
+      if (debugMessages) humanBalance(provider, viperToken, 'totalSupply')
+      const totalSupplyAfterBobClaim = await viperToken.totalSupply()
+      expect(totalSupplyAfterBobClaim).to.equal('307200000000000000000')
+
+      const { forDev, forFarmer, forLP, forCom, forFounders } = await chef.getPoolReward(currentBlock.number, currentBlock.number+1, rewardsPerBlock)
+      //console.log({forDev, forFarmer, forLP, forCom, forFounders})
+      expect(totalSupplyAfterBobClaim).to.equal(forDev.add(forFarmer).add(forLP).add(forCom).add(forFounders))
 
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('406528000000000000000')
-
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      const bobBalanceOf = await viperToken.balanceOf(bob.address)
+      expect(bobBalanceOf).to.equal('12704000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('7724032000000000000000')
+      const bobLockOf = await viperToken.lockOf(bob.address)
+      expect(bobLockOf).to.eq('241376000000000000000')
+
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
+      const bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
+      expect(bobTotalBalanceOf).to.equal('254080000000000000000')
+
+      // block ~102 - add new pool + Carol deposits
+      await chef.add(rewardsPerBlock*rewardsMultiplierForSecondPool, lp2.address, true) //5x bonus rewards pool vs pool 0
+      await lp2.connect(carol).approve(chef.address, expandTo18Decimals(1000))
+      await chef.connect(carol).deposit(1, expandTo18Decimals(100), ZERO_ADDRESS)
+
+      // she should have two times (two sets of rewards since we're at block 102) 5x (=10x) of Bob's block 101 rewards
+      await expect(chef.connect(carol).claimReward(1))
+        .to.emit(chef, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
+        .withArgs(carol.address, 1, '211733333333300250000', '201146666666635237500')
+    
+      // After Carol has claimed her rewards
+      // the token total supply, her balance, her total balance & her lock should be 10x+ compared to Bob's block 101 rewards
+      if (debugMessages) humanBalance(provider, viperToken, 'totalSupply')
+      expect(await viperToken.totalSupply()).to.gt(totalSupplyAfterBobClaim)
+
+      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', carol.address, 'carol.address')
+      expect(await viperToken.balanceOf(carol.address)).to.lt(bobBalanceOf)
+
+      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', carol.address, 'carol.address')
+      expect(await viperToken.lockOf(carol.address)).to.lt(bobLockOf)
+
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', carol.address, 'carol.address')
+      expect(await viperToken.totalBalanceOf(carol.address)).to.lt(bobTotalBalanceOf)
     })
 
     it("should allow the user to claim & unlock rewards according to the rewards unlocking schedule", async function () {
@@ -154,15 +197,15 @@ describe('MasterHerpetologist::Rewards', () => {
       const debugMessages = false
 
       // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-      const rewardsPerBlock = expandTo18Decimals(1)
+      const rewardsPerBlock = 1
       const rewardsStartAtBlock = 150
-      const chef = await deployMasterHerpetologist(wallets, viperToken, rewardsPerBlock, rewardsStartAtBlock, 1000)
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
       await viperToken.transferOwnership(chef.address)
 
       expect(await viperToken.totalSupply()).to.equal(0)
 
-      await chef.add(32000, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
       await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
       await chef.connect(bob).deposit(0, expandTo18Decimals(100), ZERO_ADDRESS)
 
@@ -174,18 +217,18 @@ describe('MasterHerpetologist::Rewards', () => {
 
       await expect(chef.connect(bob).claimReward(0))
         .to.emit(chef, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
-        .withArgs(bob.address, 0, '8130560000000000000000', '7724032000000000000000')
+        .withArgs(bob.address, 0, '508160000000000000000', '482752000000000000000')
       
-      expect(await viperToken.totalSupply()).to.equal('9830400000000000000000')
+      expect(await viperToken.totalSupply()).to.equal('614400000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('406528000000000000000')
-
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('25408000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('7724032000000000000000')
+      expect(await viperToken.lockOf(bob.address)).to.eq('482752000000000000000')
+
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       // community, developer, founder & lp reward funds should now have been rewarded with tokens
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', dev.address, 'dev.address')
@@ -205,48 +248,48 @@ describe('MasterHerpetologist::Rewards', () => {
 
       // Balances should still remain the same...
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('406528000000000000000')
-
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('25408000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('7724032000000000000000')
+      expect(await viperToken.lockOf(bob.address)).to.eq('482752000000000000000')
+
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       // Advance to the end of the lock period - 50 blocks
       // User should now be able to claim even more of the locked rewards
       await advanceBlockTo(provider, LOCK_TO_BLOCK-50)
       await expect(viperToken.connect(bob).unlock())
         .to.emit(viperToken, 'Transfer')
-        .withArgs(viperToken.address, bob.address, '6210121728000000000000')
+        .withArgs(viperToken.address, bob.address, '388132608000000000000')
       
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('6616649728000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('413540608000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('1513910272000000000000')
+      expect(await viperToken.lockOf(bob.address)).to.eq('94619392000000000000')
 
       // Advance to the end of the lock period + 10 blocks
       await advanceBlockTo(provider, LOCK_TO_BLOCK+10)
 
       // We haven't called unlock() yet - balances should remain the same
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('6616649728000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('413540608000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('1513910272000000000000')
+      expect(await viperToken.lockOf(bob.address)).to.eq('94619392000000000000')
 
-      expect(await viperToken.canUnlockAmount(bob.address)).to.eq('1513910272000000000000')
+      expect(await viperToken.canUnlockAmount(bob.address)).to.eq('94619392000000000000')
 
       await expect(viperToken.connect(bob).unlock())
         .to.emit(viperToken, 'Transfer')
-        .withArgs(viperToken.address, bob.address, '1513910272000000000000')
+        .withArgs(viperToken.address, bob.address, '94619392000000000000')
       
       const currentBlock = await latestBlock(provider)
       const lastUnlockBlock = await viperToken.lastUnlockBlock(bob.address)
@@ -254,25 +297,26 @@ describe('MasterHerpetologist::Rewards', () => {
       
       // unlock() has been called - bob should now have 0 locked tokens & 100% unlocked tokens
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('508160000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('8130560000000000000000')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
       expect(await viperToken.lockOf(bob.address)).to.eq('0')
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalLock')
-      expect(await viperToken.totalLock()).to.eq('1245184000000000000000')
+      expect(await viperToken.totalLock()).to.eq('77824000000000000000')
     })
 
     it("should not distribute VIPERs if no one deposit", async function () {
       this.timeout(0)
       const debugMessages = false
-      // 100 per block farming rate starting at block 600 with the first halvening block starting 1000 blocks after the start block
-      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(1), 600, 1000)
+      // 1 per block farming rate starting at block 600 with the first halvening block starting 1000 blocks after the start block
+      const rewardsPerBlock = 1
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 600, 1000)
       await viperToken.transferOwnership(chef.address)
-      await chef.add(100, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
       await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
 
       await advanceBlockTo(provider, 599)
@@ -308,24 +352,25 @@ describe('MasterHerpetologist::Rewards', () => {
         .withArgs(bob.address, 0, likelyDeposit)
       
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('2032640000000000000000')
-
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('40652800000000000000000')
+      expect(await viperToken.balanceOf(bob.address)).to.equal('127040000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('38620160000000000000000')
+      expect(await viperToken.lockOf(bob.address)).to.eq('2413760000000000000000')
 
-      expect(await viperToken.totalSupply()).to.equal(expandTo18Decimals(49152))
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('2540800000000000000000')
+
+      expect(await viperToken.totalSupply()).to.equal('3072000000000000000000')
       expect(await lp.balanceOf(bob.address)).to.gte(likelyDeposit)
     })
 
     it("should distribute VIPERs properly for each staker"), async () => {
-      // 100 per block farming rate starting at block 300 with the first halvening block starting 1000 blocks after the start block
-      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(100), 300, 1000)
+      // 1 per block farming rate starting at block 300 with the first halvening block starting 1000 blocks after the start block
+      const rewardsPerBlock = 1
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 300, 1000)
 
       await viperToken.transferOwnership(chef.address)
-      await chef.add(100, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
       await lp.connect(alice).approve(chef.address, expandTo18Decimals(1000))
       await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
       await lp.connect(carol).approve(chef.address, expandTo18Decimals(1000))
@@ -384,19 +429,20 @@ describe('MasterHerpetologist::Rewards', () => {
 
     it("should give proper VIPERs allocation to each pool"), async () => {
       // 100 per block farming rate starting at block 400 with the first halvening block starting 1000 blocks after the start block
-      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(100), 400, 1000)
+      const rewardsPerBlock = 1
+      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 400, 1000)
 
       await viperToken.transferOwnership(chef.address)
       await lp.connect(alice).approve(chef.address, expandTo18Decimals(1000))
       await lp2.connect(bob).approve(chef.address, expandTo18Decimals(1000))
       // Add first LP to the pool with allocation 1
-      await chef.add(10, lp.address, true)
+      await chef.add(rewardsPerBlock, lp.address, true)
       // Alice deposits 10 LPs at block 410
       await advanceBlockTo(provider, 409)
       await chef.connect(alice).deposit(0, expandTo18Decimals(10), ZERO_ADDRESS)
       // Add LP2 to the pool with allocation 2 at block 420
       await advanceBlockTo(provider, 419)
-      await chef.add(20, lp2.address, true)
+      await chef.add(rewardsPerBlock*2, lp2.address, true) // 2x bonus
       // Alice should have 10*1000 pending reward
       expect(await chef.pendingReward(0, alice.address)).to.equal(expandTo18Decimals(10000))
       // Bob deposits 10 LP2s at block 425
@@ -408,25 +454,6 @@ describe('MasterHerpetologist::Rewards', () => {
       // At block 430. Bob should get 5*2/3*1000 = 3333. Alice should get ~1666 more.
       expect(await chef.pendingReward(0, alice.address)).to.equal(expandTo18Decimals(13333))
       expect(await chef.pendingReward(1, bob.address)).to.equal(expandTo18Decimals(3333))
-    }
-
-    it("should stop giving bonus VIPERs after the bonus period ends"), async () => {
-      // 100 per block farming rate starting at block 500 with the first halvening block starting 600 blocks after the start block
-      const chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(100), 500, 600)
-
-      await viperToken.transferOwnership(chef.address)
-      await lp.connect(alice).approve(chef.address, expandTo18Decimals(1000))
-      await chef.add(1, lp.address, true)
-      // Alice deposits 10 LPs at block 590
-      await advanceBlockTo(provider, 589)
-      await chef.connect(alice).deposit(0, expandTo18Decimals(10), ZERO_ADDRESS)
-      // At block 605, she should have 1000*10 + 100*5 = 10500 pending.
-      await advanceBlockTo(provider, 605)
-      expect(await chef.pendingReward(0, alice.address)).to.equal(expandTo18Decimals(10500))
-      // At block 606, Alice withdraws all pending rewards and should get 10600.
-      await chef.connect(alice).deposit(0, 0, ZERO_ADDRESS)
-      expect(await chef.pendingReward(0, alice.address)).to.equal(0)
-      expect(await viperToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(10600))
     }
   })
 
