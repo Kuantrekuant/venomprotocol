@@ -10,13 +10,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ViperToken.sol";
 import "./Authorizable.sol";
 
-// MasterHerpetologist is the master of ViperSwap. He breeds new VIPERs.
+// MasterBreeder is the master breeder of ViperSwap. He breeds new VIPERs.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
 // will be transferred to a governance smart contract once Viper is sufficiently
 // distributed and the community can show to govern itself.
 //
-contract MasterHerpetologist is Ownable, Authorizable {
+contract MasterBreeder is Ownable, Authorizable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -168,7 +168,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
     ) public onlyOwner {
         require(
             poolId1[address(_lpToken)] == 0,
-            "MasterHerpetologist::add: lp is already in pool"
+            "MasterBreeder::add: lp is already in pool"
         );
         if (_withUpdate) {
             massUpdatePools();
@@ -424,7 +424,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         return a;
     }
 
-    // Deposit LP tokens to MasterHerpetologist for Viper allocation.
+    // Deposit LP tokens to MasterBreeder for Viper allocation.
     function deposit(
         uint256 _pid,
         uint256 _amount,
@@ -432,7 +432,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
     ) public {
         require(
             _amount > 0,
-            "MasterHerpetologist::deposit: amount must be greater than 0"
+            "MasterBreeder::deposit: amount must be greater than 0"
         );
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -479,7 +479,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         user.lastDepositBlock = block.number;
     }
 
-    // Withdraw LP tokens from MasterHerpetologist.
+    // Withdraw LP tokens from MasterBreeder.
     function withdraw(
         uint256 _pid,
         uint256 _amount,
@@ -489,7 +489,7 @@ contract MasterHerpetologist is Ownable, Authorizable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         UserGlobalInfo storage refer = userGlobalInfo[_ref];
         UserGlobalInfo storage current = userGlobalInfo[msg.sender];
-        require(user.amount >= _amount, "MasterHerpetologist::withdraw: not good");
+        require(user.amount >= _amount, "MasterBreeder::withdraw: not good");
         if (_ref != address(0)) {
             refer.referrals[msg.sender] = refer.referrals[msg.sender] - _amount;
             refer.globalRefAmount = refer.globalRefAmount - _amount;

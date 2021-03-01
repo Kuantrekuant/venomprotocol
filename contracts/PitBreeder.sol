@@ -11,11 +11,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// ViperBreeder is MasterHerpetologist's left hand and a prized Viper breeder.
+// PitBreeder is MasterBreeder's left hand and a prized Viper breeder.
 // This contract handles "serving up" rewards for xViper holders by trading tokens collected from fees for Viper.
 
 // T1 - T4: OK
-contract ViperBreeder is Ownable {
+contract PitBreeder is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -74,7 +74,7 @@ contract ViperBreeder is Ownable {
         // Checks
         require(
             token != viper && token != weth && token != bridge,
-            "ViperBreeder: Invalid bridge"
+            "PitBreeder: Invalid bridge"
         );
 
         // Effects
@@ -87,7 +87,7 @@ contract ViperBreeder is Ownable {
     // C6: It's not a fool proof solution, but it prevents flash loans, so here it's ok to use tx.origin
     modifier onlyEOA() {
         // Try to make flash-loan exploit harder to do by only allowing externally owned addresses.
-        require(msg.sender == tx.origin, "ViperBreeder: must use EOA");
+        require(msg.sender == tx.origin, "PitBreeder: must use EOA");
         _;
     }
 
@@ -121,7 +121,7 @@ contract ViperBreeder is Ownable {
         // Interactions
         // S1 - S4: OK
         IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(token0, token1));
-        require(address(pair) != address(0), "ViperBreeder: Invalid pair");
+        require(address(pair) != address(0), "PitBreeder: Invalid pair");
         // balanceOf: S1 - S4: OK
         // transfer: X1 - X5: OK
         IERC20(address(pair)).safeTransfer(
@@ -229,7 +229,7 @@ contract ViperBreeder is Ownable {
         // X1 - X5: OK
         IUniswapV2Pair pair =
             IUniswapV2Pair(factory.getPair(fromToken, toToken));
-        require(address(pair) != address(0), "ViperBreeder: Cannot convert");
+        require(address(pair) != address(0), "PitBreeder: Cannot convert");
 
         // Interactions
         // X1 - X5: OK

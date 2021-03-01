@@ -2,13 +2,13 @@ import { Contract, Wallet } from 'ethers'
 import { deployContract } from 'ethereum-waffle'
 import { BigNumberish } from 'ethers/utils'
 
-import MasterHerpetologist from '../../build/MasterHerpetologist.json'
+import MasterBreeder from '../../build/MasterBreeder.json'
 
 const overrides = {
   gasLimit: 9999999
 }
 
-export async function deployMasterHerpetologist(
+export async function deployMasterBreeder(
   wallets: Wallet[],
   token: Contract,
   rewardPerBlock: BigNumberish,
@@ -150,7 +150,7 @@ export async function deployMasterHerpetologist(
 
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  const contract = await deployContract(alice, MasterHerpetologist, [
+  const contract = await deployContract(alice, MasterBreeder, [
     token.address,
     dev.address,
     liquidityFund.address,

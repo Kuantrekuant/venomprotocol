@@ -4,7 +4,7 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterHerpetologist } from './shared'
+import { deployMasterBreeder } from './shared'
 
 import ViperToken from '../../build/ViperToken.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
@@ -14,9 +14,9 @@ chai.use(solidity)
 const LOCK_FROM_BLOCK = 250
 const LOCK_TO_BLOCK = 500
 
-// Referrals aren't actively used by the MasterHerpetologist contract - no automatic payouts will be handed out to the referrer on deposits & withdrawals
+// Referrals aren't actively used by the MasterBreeder contract - no automatic payouts will be handed out to the referrer on deposits & withdrawals
 // The referral tracking system can be used for a later stage airdrop (e.g. airdropping funds from the community funds address to referrers) or other initiatives 
-describe('MasterHerpetologist::Referrals', () => {
+describe('MasterBreeder::Referrals', () => {
   const provider = new MockProvider({
     hardfork: 'istanbul',
     mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
@@ -27,7 +27,7 @@ describe('MasterHerpetologist::Referrals', () => {
 
   let viperToken: Contract
   let lp: Contract
-  let chef: Contract
+  let breeder: Contract
   
   beforeEach(async () => {
     viperToken = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
@@ -40,47 +40,47 @@ describe('MasterHerpetologist::Referrals', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    chef = await deployMasterHerpetologist(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(chef.address)
+    await viperToken.transferOwnership(breeder.address)
 
     expect(await viperToken.totalSupply()).to.equal(0)
 
-    await chef.add(rewardsPerBlock, lp.address, true)
+    await breeder.add(rewardsPerBlock, lp.address, true)
   })
 
   it("should properly track referrals", async function () {    
     // Alice refers Bob who deposits
-    await lp.connect(bob).approve(chef.address, expandTo18Decimals(1000))
-    await chef.connect(bob).deposit(0, expandTo18Decimals(100), alice.address)
+    await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
+    await breeder.connect(bob).deposit(0, expandTo18Decimals(100), alice.address)
 
     // The contract should now keep track of Alice's referral
-    let refValue = await chef.getRefValueOf(alice.address, bob.address)
-    let globalRefValue = await chef.getGlobalRefAmount(alice.address)
+    let refValue = await breeder.getRefValueOf(alice.address, bob.address)
+    let globalRefValue = await breeder.getGlobalRefAmount(alice.address)
     expect(refValue).to.eq(expandTo18Decimals(100))
     expect(globalRefValue).to.eq(expandTo18Decimals(100))
-    expect(await chef.getTotalRefs(alice.address)).to.eq(1)
+    expect(await breeder.getTotalRefs(alice.address)).to.eq(1)
 
     // Alice now also refers Carol
-    await lp.connect(carol).approve(chef.address, expandTo18Decimals(1000))
-    await chef.connect(carol).deposit(0, expandTo18Decimals(100), alice.address)
+    await lp.connect(carol).approve(breeder.address, expandTo18Decimals(1000))
+    await breeder.connect(carol).deposit(0, expandTo18Decimals(100), alice.address)
     
-    refValue = await chef.getRefValueOf(alice.address, carol.address)
-    globalRefValue = await chef.getGlobalRefAmount(alice.address)
+    refValue = await breeder.getRefValueOf(alice.address, carol.address)
+    globalRefValue = await breeder.getGlobalRefAmount(alice.address)
     expect(refValue).to.eq(expandTo18Decimals(100))
     expect(globalRefValue).to.eq(expandTo18Decimals(200))
-    expect(await chef.getTotalRefs(alice.address)).to.eq(2)
+    expect(await breeder.getTotalRefs(alice.address)).to.eq(2)
 
     // calculate the user's deposit
-    let userDepositFee = await chef.userDepFee()
+    let userDepositFee = await breeder.userDepFee()
     let likelyDeposit = expandTo18Decimals(10).sub(expandTo18Decimals(10).mul(userDepositFee).div(10000))
-    await chef.connect(bob).withdraw(0, likelyDeposit, alice.address)
+    await breeder.connect(bob).withdraw(0, likelyDeposit, alice.address)
 
     // Bob withdraws from the pool and Alice's referral value/score should be lowered as a consequence
-    expect(await chef.getRefValueOf(alice.address, bob.address)).to.lt(refValue)
-    expect(await chef.getGlobalRefAmount(alice.address)).to.lt(globalRefValue)
+    expect(await breeder.getRefValueOf(alice.address, bob.address)).to.lt(refValue)
+    expect(await breeder.getGlobalRefAmount(alice.address)).to.lt(globalRefValue)
 
     // Total referrals should still remain intact
-    expect(await chef.getTotalRefs(alice.address)).to.eq(2)
+    expect(await breeder.getTotalRefs(alice.address)).to.eq(2)
   })
 })
