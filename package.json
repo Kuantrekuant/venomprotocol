@@ -1,15 +1,11 @@
 {
   "name": "@viperswap/contracts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
   "description": "🐍 Token + 🧑‍🌾 Liquidity Mining contracts for ViperSwap & the Viper Protocol",
   "files": [
-    "abi",
-    "artifacts",
     "contracts",
-    "deployments",
-    "exports",
-    "types"
+    "build"
   ],
   "author": "",
   "repository": {
