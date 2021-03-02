@@ -6,7 +6,7 @@ import { expandTo18Decimals, advanceBlockTo, latestBlock, humanBalance } from '.
 
 import { deployMasterBreeder } from './shared'
 
-import ViperToken from '../../build/ViperToken.json'
+import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
@@ -17,7 +17,7 @@ const overrides = {
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
-// ViperToken locks
+// Viper token locks
 const LOCK_FROM_BLOCK = 250
 const LOCK_TO_BLOCK = 500
 
@@ -41,7 +41,7 @@ describe('MasterBreeder::Rewards', () => {
   let viperToken: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
   })
 
   context("Entering & withdrawing from pools + claiming rewards", function () {

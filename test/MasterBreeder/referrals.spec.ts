@@ -6,7 +6,7 @@ import { expandTo18Decimals } from '../shared/utilities'
 
 import { deployMasterBreeder } from './shared'
 
-import ViperToken from '../../build/ViperToken.json'
+import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
@@ -30,7 +30,7 @@ describe('MasterBreeder::Referrals', () => {
   let breeder: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
     
     lp = await deployContract(minter, ERC20Mock, ["LPToken", "LP", expandTo18Decimals(1000000)])
     await lp.transfer(alice.address, expandTo18Decimals(1000))

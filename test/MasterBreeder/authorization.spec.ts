@@ -6,7 +6,7 @@ import { expandTo18Decimals } from '../shared/utilities'
 
 import { deployMasterBreeder } from './shared'
 
-import ViperToken from '../../build/ViperToken.json'
+import Viper from '../../build/Viper.json'
 
 chai.use(solidity)
 
@@ -33,12 +33,12 @@ describe('MasterBreeder::Authorization', () => {
   let breeder: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
     // 1000 VIPER per block, rewards start at block 0, rewards are halved after every 45360 blocks
     breeder = await deployMasterBreeder(wallets, viperToken, REWARDS_PER_BLOCK, REWARDS_START_BLOCK, HALVING_AFTER_BLOCK_COUNT)
   })
 
-  it("should allow the owner to reclaim ownership of the ViperToken", async function () {
+  it("should allow the owner to reclaim ownership of the Viper token", async function () {
     expect(await viperToken.transferOwnership(breeder.address))
 
     expect(await viperToken.owner()).to.be.equal(breeder.address)
@@ -50,7 +50,7 @@ describe('MasterBreeder::Authorization', () => {
     expect(await viperToken.owner()).to.be.equal(alice.address)
   })
 
-  it("should allow authorized users to reclaim ownership of the ViperToken", async function () {
+  it("should allow authorized users to reclaim ownership of the Viper token", async function () {
     await breeder.addAuthorized(bob.address)
 
     expect(await viperToken.transferOwnership(breeder.address))

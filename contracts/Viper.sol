@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Authorizable.sol";
 
-// ViperToken with Governance.
-contract ViperToken is ERC20("ViperToken", "VIPER"), Ownable, Authorizable {
+// Viper token with Governance.
+contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
     uint256 private _cap = 500000000e18; //500m
     uint256 private _totalLock;
     uint256 public lockFromBlock;

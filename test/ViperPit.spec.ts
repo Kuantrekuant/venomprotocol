@@ -4,7 +4,7 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals, advanceBlockTo, latestBlock } from './shared/utilities'
 
-import ViperToken from '../build/ViperToken.json'
+import Viper from '../build/Viper.json'
 import ViperPit from '../build/ViperPit.json'
 
 chai.use(solidity)
@@ -24,7 +24,7 @@ describe('ViperPit', () => {
   let viperPit: Contract
 
   beforeEach(async () => {
-    viperToken = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
     
     await viperToken.mint(alice.address, "100")
     await viperToken.mint(bob.address, "100")

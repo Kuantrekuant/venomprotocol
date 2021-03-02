@@ -8,7 +8,7 @@ import { expandTo18Decimals, advanceBlockTo, latestBlock } from '../shared/utili
 
 import { deployMasterBreeder } from './shared'
 
-import ViperToken from '../../build/ViperToken.json'
+import Viper from '../../build/Viper.json'
 
 chai.use(solidity)
 
@@ -42,13 +42,13 @@ describe('MasterBreeder::State', () => {
   let breeder: Contract
 
   beforeEach(async () => {
-    viperToken = await deployContract(alice, ViperToken, [lockFromBlock, lockToBlock])
+    viperToken = await deployContract(alice, Viper, [lockFromBlock, lockToBlock])
     breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(1000), rewardsStartBlock, halvingAfterBlockCount)
     await viperToken.transferOwnership(breeder.address)
   })
 
   it("should set correct state variables", async function () {
-    const viper = await breeder.Viper()
+    const viper = await breeder.viper()
     const devaddr = await breeder.devaddr()
     const liquidityaddr = await breeder.liquidityaddr()
     const comfundaddr = await breeder.comfundaddr()

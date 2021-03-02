@@ -4,7 +4,7 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals, advanceBlockTo, latestBlock } from './shared/utilities'
 
-import ViperToken from '../build/ViperToken.json'
+import Viper from '../build/Viper.json'
 
 chai.use(solidity)
 
@@ -18,7 +18,7 @@ const TEST_AMOUNT = expandTo18Decimals(10)
 const LOCK_FROM_BLOCK = 100
 const LOCK_TO_BLOCK = 200
 
-describe('ViperToken', () => {
+describe('Viper', () => {
   const provider = new MockProvider({
     hardfork: 'istanbul',
     mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
@@ -28,13 +28,13 @@ describe('ViperToken', () => {
 
   let token: Contract
   beforeEach(async () => {
-    token = await deployContract(alice, ViperToken, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    token = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
     await token.mint(alice.address, TOTAL_SUPPLY)
   })
 
   it('should have correct values for: name, symbol, decimals, totalSupply, balanceOf', async () => {
     const name = await token.name()
-    expect(name).to.eq('ViperToken')
+    expect(name).to.eq('Viper')
     expect(await token.symbol()).to.eq('VIPER')
     expect(await token.decimals()).to.eq(18)
     expect(await token.totalSupply()).to.eq(TOTAL_SUPPLY)

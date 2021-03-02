@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ViperToken.sol";
+import "./Viper.sol";
 import "./Authorizable.sol";
 
 // MasterBreeder is the master breeder of ViperSwap. He breeds new VIPERs.
@@ -58,7 +58,7 @@ contract MasterBreeder is Ownable, Authorizable {
     }
 
     // The Viper TOKEN!
-    ViperToken public Viper;
+    Viper public viper;
     //An ETH/USDC Oracle (Chainlink)
     address public usdOracle;
     // Dev address.
@@ -115,7 +115,7 @@ contract MasterBreeder is Ownable, Authorizable {
     );
 
     constructor(
-        ViperToken _Viper,
+        Viper _viper,
         address _devaddr,
         address _liquidityaddr,
         address _comfundaddr,
@@ -131,7 +131,7 @@ contract MasterBreeder is Ownable, Authorizable {
         uint256[] memory _userFeeStage,
         uint256[] memory _devFeeStage
     ) public {
-        Viper = _Viper;
+        viper = _viper;
         devaddr = _devaddr;
         liquidityaddr = _liquidityaddr;
         comfundaddr = _comfundaddr;
@@ -233,37 +233,37 @@ contract MasterBreeder is Ownable, Authorizable {
             ViperForCom,
             ViperForFounders
         ) = getPoolReward(pool.lastRewardBlock, block.number, pool.allocPoint);
-        Viper.mint(address(this), ViperForFarmer);
+        viper.mint(address(this), ViperForFarmer);
         pool.accViperPerShare = pool.accViperPerShare.add(
             ViperForFarmer.mul(1e12).div(lpSupply)
         );
         pool.lastRewardBlock = block.number;
         if (ViperForDev > 0) {
-            Viper.mint(address(devaddr), ViperForDev);
+            viper.mint(address(devaddr), ViperForDev);
             //Dev fund has xx% locked during the starting bonus period. After which locked funds drip out linearly each block over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                Viper.lock(address(devaddr), ViperForDev.mul(75).div(100));
+                viper.lock(address(devaddr), ViperForDev.mul(75).div(100));
             }
         }
         if (ViperForLP > 0) {
-            Viper.mint(liquidityaddr, ViperForLP);
+            viper.mint(liquidityaddr, ViperForLP);
             //LP + Partnership fund has only xx% locked over time as most of it is needed early on for incentives and listings. The locked amount will drip out linearly each block after the bonus period.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                Viper.lock(address(liquidityaddr), ViperForLP.mul(45).div(100));
+                viper.lock(address(liquidityaddr), ViperForLP.mul(45).div(100));
             }
         }
         if (ViperForCom > 0) {
-            Viper.mint(comfundaddr, ViperForCom);
+            viper.mint(comfundaddr, ViperForCom);
             //Community Fund has xx% locked during bonus period and then drips out linearly over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                Viper.lock(address(comfundaddr), ViperForCom.mul(85).div(100));
+                viper.lock(address(comfundaddr), ViperForCom.mul(85).div(100));
             }
         }
         if (ViperForFounders > 0) {
-            Viper.mint(founderaddr, ViperForFounders);
+            viper.mint(founderaddr, ViperForFounders);
             //The Founders reward has xx% of their funds locked during the bonus period which then drip out linearly per block over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                Viper.lock(address(founderaddr), ViperForFounders.mul(95).div(100));
+                viper.lock(address(founderaddr), ViperForFounders.mul(95).div(100));
             }
         }
     }
@@ -318,7 +318,7 @@ contract MasterBreeder is Ownable, Authorizable {
             multiplier.mul(REWARD_PER_BLOCK).mul(_allocPoint).div(
                 totalAllocPoint
             );
-        uint256 ViperCanMint = Viper.cap().sub(Viper.totalSupply());
+        uint256 ViperCanMint = viper.cap().sub(viper.totalSupply());
 
         if (ViperCanMint < amount) {
             forDev = 0;
@@ -374,20 +374,20 @@ contract MasterBreeder is Ownable, Authorizable {
                 user.amount.mul(pool.accViperPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            uint256 masterBal = Viper.balanceOf(address(this));
+            uint256 masterBal = viper.balanceOf(address(this));
 
             if (pending > masterBal) {
                 pending = masterBal;
             }
 
             if (pending > 0) {
-                Viper.transfer(msg.sender, pending);
+                viper.transfer(msg.sender, pending);
                 uint256 lockAmount = 0;
                 if (user.rewardDebtAtBlock <= FINISH_BONUS_AT_BLOCK) {
                     lockAmount = pending.mul(PERCENT_LOCK_BONUS_REWARD).div(
                         100
                     );
-                    Viper.lock(msg.sender, lockAmount);
+                    viper.lock(msg.sender, lockAmount);
                 }
 
                 user.rewardDebtAtBlock = block.number;
@@ -630,11 +630,11 @@ contract MasterBreeder is Ownable, Authorizable {
 
     // Safe Viper transfer function, just in case if rounding error causes pool to not have enough Vipers.
     function safeViperTransfer(address _to, uint256 _amount) internal {
-        uint256 ViperBal = Viper.balanceOf(address(this));
+        uint256 ViperBal = viper.balanceOf(address(this));
         if (_amount > ViperBal) {
-            Viper.transfer(_to, ViperBal);
+            viper.transfer(_to, ViperBal);
         } else {
-            Viper.transfer(_to, _amount);
+            viper.transfer(_to, _amount);
         }
     }
 
@@ -784,6 +784,6 @@ contract MasterBreeder is Ownable, Authorizable {
     }
 
     function reclaimTokenOwnership(address _newOwner) public onlyAuthorized() {
-        Viper.transferOwnership(_newOwner);
+        viper.transferOwnership(_newOwner);
     }
 }

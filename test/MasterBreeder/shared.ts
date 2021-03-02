@@ -170,7 +170,7 @@ export async function deployMasterBreeder(
 
   //Init contract
   if (initializeLocks) {
-    await contract.lockUpdate(95) // 95% of rewards will be locked between ViperToken's _lockFromBlock and _lockToBlock
+    await contract.lockUpdate(95) // 95% of rewards will be locked between the Viper token's _lockFromBlock and _lockToBlock
     await contract.lockcomUpdate(6) // 6% rewards to community rewards pool
     await contract.lockdevUpdate(6) // 6% rewards to dev rewards pool
     await contract.lockfounderUpdate(4) // 4% rewards to founder rewards pool
