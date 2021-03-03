@@ -22,6 +22,12 @@ export async function advanceBlockTo(provider: Web3Provider, blockNumber: number
   }
 }
 
+export async function advanceBlockWith(provider: Web3Provider, blockCount: number) {
+  const currentBlockNumber = await provider.getBlockNumber()
+  const newBlockNumber = currentBlockNumber + blockCount
+  await advanceBlockTo(provider, newBlockNumber)
+}
+
 export async function increase(provider: Web3Provider, value: number) {
   await provider.send("evm_increaseTime", [value])
   await advanceBlock(provider)

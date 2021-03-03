@@ -359,6 +359,12 @@ contract MasterBreeder is Ownable, Authorizable {
         return user.amount.mul(accViperPerShare).div(1e12).sub(user.rewardDebt);
     }
 
+    function claimRewards(uint256[] memory _pids) public {
+        for (uint256 i = 0; i < _pids.length; i++) {
+          claimReward(_pids[i]);
+        }
+    }
+
     function claimReward(uint256 _pid) public {
         updatePool(_pid);
         _harvest(_pid);

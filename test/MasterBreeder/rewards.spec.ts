@@ -2,7 +2,7 @@ import chai, { expect } from 'chai'
 import { Contract, utils } from 'ethers'
 import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
-import { expandTo18Decimals, advanceBlockTo, latestBlock, humanBalance } from '../shared/utilities'
+import { expandTo18Decimals, advanceBlockTo, advanceBlockWith, latestBlock, humanBalance } from '../shared/utilities'
 
 import { deployMasterBreeder } from './shared'
 
@@ -58,29 +58,6 @@ describe('MasterBreeder::Rewards', () => {
       await lp2.transfer(alice.address, expandTo18Decimals(1000))
       await lp2.transfer(bob.address, expandTo18Decimals(1000))
       await lp2.transfer(carol.address, expandTo18Decimals(1000))
-    })
-
-    it("should allow emergency withdraw", async function () {
-      this.timeout(0)
-      // 1 per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
-      const rewardsPerBlock = 1
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 100, 1000)
-
-      await breeder.add(rewardsPerBlock, lp.address, true)
-
-      await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
-
-      await breeder.connect(bob).deposit(0, expandTo18Decimals(100), ZERO_ADDRESS)
-
-      expect(await lp.balanceOf(bob.address)).to.equal(expandTo18Decimals(900))
-
-      // Even for emergency withdraws there are still withdrawal penalties applied
-      // Bob will end up with 975 tokens
-      // Dev address should now hold 25 tokens
-      await breeder.connect(bob).emergencyWithdraw(0)
-
-      expect(await lp.balanceOf(bob.address)).to.equal('974437500000000000000')
-      expect(await lp.balanceOf(dev.address)).to.equal('24812500000000000000')
     })
 
     it("should not pay out VIPER rewards before farming has started", async function () {
@@ -156,15 +133,15 @@ describe('MasterBreeder::Rewards', () => {
       expect(totalSupplyAfterBobClaim).to.equal(forDev.add(forFarmer).add(forLP).add(forCom).add(forFounders))
 
       if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      const bobBalanceOf = await viperToken.balanceOf(bob.address)
+      let bobBalanceOf = await viperToken.balanceOf(bob.address)
       expect(bobBalanceOf).to.equal('12704000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      const bobLockOf = await viperToken.lockOf(bob.address)
+      let bobLockOf = await viperToken.lockOf(bob.address)
       expect(bobLockOf).to.eq('241376000000000000000')
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      const bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
+      let bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
       expect(bobTotalBalanceOf).to.equal('254080000000000000000')
 
       // block ~102 - add new pool + Carol deposits
@@ -178,7 +155,6 @@ describe('MasterBreeder::Rewards', () => {
         .withArgs(carol.address, 1, '211733333333300250000', '201146666666635237500')
     
       // After Carol has claimed her rewards
-      // the token total supply, her balance, her total balance & her lock should be 10x+ compared to Bob's block 101 rewards
       if (debugMessages) humanBalance(provider, viperToken, 'totalSupply')
       expect(await viperToken.totalSupply()).to.gt(totalSupplyAfterBobClaim)
 
@@ -190,6 +166,29 @@ describe('MasterBreeder::Rewards', () => {
 
       if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', carol.address, 'carol.address')
       expect(await viperToken.totalBalanceOf(carol.address)).to.lt(bobTotalBalanceOf)
+
+      // Bob now joins pool 2 in order to verify that he can claim from all pools at once
+      await lp2.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
+      await breeder.connect(bob).deposit(1, expandTo18Decimals(100), ZERO_ADDRESS)
+
+      // Advance 10 blocks, then claim rewards from all pools
+      advanceBlockWith(provider, 10) 
+      await breeder.connect(bob).claimRewards([0, 1])
+
+      expect('claimReward').to.be.calledOnContractWith(breeder, [0]);
+      expect('claimReward').to.be.calledOnContractWith(breeder, [1]);
+
+      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
+      bobBalanceOf = await viperToken.balanceOf(bob.address)
+      expect(bobBalanceOf).to.equal('50815999999995037500')
+
+      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
+      bobLockOf = await viperToken.lockOf(bob.address)
+      expect(bobLockOf).to.eq('965503999999905712500')
+
+      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
+      bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
+      expect(bobTotalBalanceOf).to.equal('1016319999999900750000')
     })
 
     it("should allow the user to claim & unlock rewards according to the rewards unlocking schedule", async function () {
