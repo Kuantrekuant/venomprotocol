@@ -117,7 +117,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     );
 
     modifier nonDuplicated(IERC20 _lpToken) {
-        require(poolExistence[_lpToken] == false, "nonDuplicated: duplicated");
+        require(poolExistence[_lpToken] == false, "MasterBreeder::nonDuplicated: duplicated");
         _;
     }
 
@@ -651,7 +651,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         } else {
             transferSuccess = viper.transfer(_to, _amount);
         }
-        require(transferSuccess, "safeViperTransfer: transfer failed");
+        require(transferSuccess, "MasterBreeder::safeViperTransfer: transfer failed");
     }
 
     // Update dev address by the previous dev.
