@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Viper.sol";
 import "./Authorizable.sol";
 
@@ -16,7 +17,7 @@ import "./Authorizable.sol";
 // will be transferred to a governance smart contract once Viper is sufficiently
 // distributed and the community can show to govern itself.
 //
-contract MasterBreeder is Ownable, Authorizable {
+contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -97,6 +98,7 @@ contract MasterBreeder is Ownable, Authorizable {
     // Info of each user that stakes LP tokens. pid => user address => info
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     mapping(address => UserGlobalInfo) public userGlobalInfo;
+    mapping(IERC20 => bool) public poolExistence;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
 
@@ -113,6 +115,11 @@ contract MasterBreeder is Ownable, Authorizable {
         uint256 amount,
         uint256 lockAmount
     );
+
+    modifier nonDuplicated(IERC20 _lpToken) {
+        require(poolExistence[_lpToken] == false, "nonDuplicated: duplicated");
+        _;
+    }
 
     constructor(
         Viper _viper,
@@ -165,7 +172,7 @@ contract MasterBreeder is Ownable, Authorizable {
         uint256 _allocPoint,
         IERC20 _lpToken,
         bool _withUpdate
-    ) public onlyOwner {
+    ) public onlyOwner nonDuplicated(_lpToken) {
         require(
             poolId1[address(_lpToken)] == 0,
             "MasterBreeder::add: lp is already in pool"
@@ -177,6 +184,7 @@ contract MasterBreeder is Ownable, Authorizable {
             block.number > START_BLOCK ? block.number : START_BLOCK;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolId1[address(_lpToken)] = poolInfo.length + 1;
+        poolExistence[_lpToken] = true;
         poolInfo.push(
             PoolInfo({
                 lpToken: _lpToken,
@@ -435,7 +443,7 @@ contract MasterBreeder is Ownable, Authorizable {
         uint256 _pid,
         uint256 _amount,
         address _ref
-    ) public {
+    ) public nonReentrant {
         require(
             _amount > 0,
             "MasterBreeder::deposit: amount must be greater than 0"
@@ -490,7 +498,7 @@ contract MasterBreeder is Ownable, Authorizable {
         uint256 _pid,
         uint256 _amount,
         address _ref
-    ) public {
+    ) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         UserGlobalInfo storage refer = userGlobalInfo[_ref];
@@ -621,7 +629,7 @@ contract MasterBreeder is Ownable, Authorizable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY. This has the same 25% fee as same block withdrawals to prevent abuse of thisfunction.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         //reordered from Sushi function to prevent risk of reentrancy
@@ -636,12 +644,14 @@ contract MasterBreeder is Ownable, Authorizable {
 
     // Safe Viper transfer function, just in case if rounding error causes pool to not have enough Vipers.
     function safeViperTransfer(address _to, uint256 _amount) internal {
-        uint256 ViperBal = viper.balanceOf(address(this));
-        if (_amount > ViperBal) {
-            viper.transfer(_to, ViperBal);
+        uint256 viperBal = viper.balanceOf(address(this));
+        bool transferSuccess = false;
+        if (_amount > viperBal) {
+            transferSuccess = viper.transfer(_to, viperBal);
         } else {
-            viper.transfer(_to, _amount);
+            transferSuccess = viper.transfer(_to, _amount);
         }
+        require(transferSuccess, "safeViperTransfer: transfer failed");
     }
 
     // Update dev address by the previous dev.
