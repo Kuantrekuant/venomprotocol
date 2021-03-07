@@ -1,14 +1,14 @@
 import chai, { expect } from 'chai'
-import { Contract, Wallet, utils } from 'ethers'
+import { Contract } from 'ethers'
 import { MaxUint256 } from 'ethers/constants'
 import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 import { BigNumber, bigNumberify, BigNumberish } from 'ethers/utils'
 
-import { expandTo18Decimals, advanceBlockTo, latestBlock } from '../shared/utilities'
+import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
+import { deployMasterBreeder } from '../shared/deploy'
 
-import Viper from '../../build/Viper.json'
+import GovernanceToken from '../../build/GovernanceToken.json'
 
 chai.use(solidity)
 
@@ -29,6 +29,8 @@ describe('MasterBreeder::State', () => {
   // Bao has modified FINISH_BONUS_AT_BLOCK since the inception of the contract - values will differ vs original contract instantiation
   const rewardsStartBlock = 11420726
   const halvingAfterBlockCount = 45360 // Ethereum blocks per week, based on ~13s block time
+  const TOTAL_CAP = expandTo18Decimals(500000000) // 500m
+  const MANUAL_MINT_LIMIT = expandTo18Decimals(50000) // 50k  
   const lockFromBlock = 13766564
   const lockToBlock = 20960714
   
@@ -38,24 +40,24 @@ describe('MasterBreeder::State', () => {
   const expectedFinishBonusAtBlock = 16092806
   const halvingAtBlocks: BigNumber[] = []
 
-  let viperToken: Contract
+  let govToken: Contract
   let breeder: Contract
 
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [lockFromBlock, lockToBlock])
-    breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(1000), rewardsStartBlock, halvingAfterBlockCount)
-    await viperToken.transferOwnership(breeder.address)
+    govToken = await deployContract(alice, GovernanceToken, ["Viper", "VIPER", TOTAL_CAP, MANUAL_MINT_LIMIT, lockFromBlock, lockToBlock])
+    breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(1000), rewardsStartBlock, halvingAfterBlockCount)
+    await govToken.transferOwnership(breeder.address)
   })
 
   it("should set correct state variables", async function () {
-    const viper = await breeder.viper()
+    const usedGovToken = await breeder.govToken()
     const devaddr = await breeder.devaddr()
     const liquidityaddr = await breeder.liquidityaddr()
     const comfundaddr = await breeder.comfundaddr()
     const founderaddr = await breeder.founderaddr()
-    const owner = await viperToken.owner()
+    const owner = await govToken.owner()
 
-    expect(viper).to.equal(viperToken.address)
+    expect(usedGovToken).to.equal(govToken.address)
     expect(devaddr).to.equal(dev.address)
     expect(liquidityaddr).to.equal(liquidityFund.address)
     expect(comfundaddr).to.equal(communityFund.address)

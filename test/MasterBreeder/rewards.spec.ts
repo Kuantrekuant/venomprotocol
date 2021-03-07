@@ -4,16 +4,11 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals, advanceBlockTo, advanceBlockWith, latestBlock, humanBalance } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
+import { deployMasterBreeder, deployGovernanceToken, TOKEN_NAME, TOKEN_SYMBOL, TOTAL_CAP, MANUAL_MINT_LIMIT } from '../shared/deploy'
 
-import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
-
-const overrides = {
-  gasLimit: 9999999
-}
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -27,7 +22,7 @@ const LOCK_TO_BLOCK = 500
 // BSC: ~201600
 // Harmony: ~302400
 // For testing use 250
-const HALVING_AFTER_BLOCK_COUNT = 45361
+// const HALVING_AFTER_BLOCK_COUNT = 45361
 
 describe('MasterBreeder::Rewards', () => {
   const provider = new MockProvider({
@@ -38,10 +33,10 @@ describe('MasterBreeder::Rewards', () => {
   const wallets = provider.getWallets()
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  let viperToken: Contract
+  let govToken: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    govToken = await deployGovernanceToken(alice, TOKEN_NAME, TOKEN_SYMBOL, TOTAL_CAP, MANUAL_MINT_LIMIT, LOCK_FROM_BLOCK, LOCK_TO_BLOCK)
   })
 
   context("Entering & withdrawing from pools + claiming rewards", function () {
@@ -64,15 +59,15 @@ describe('MasterBreeder::Rewards', () => {
       // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
       const rewardsStartAtBlock = 100
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-      await viperToken.transferOwnership(breeder.address)
+      await govToken.transferOwnership(breeder.address)
 
-      expect(await viperToken.totalSupply()).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
 
       await breeder.add(rewardsPerBlock, lp.address, true)
 
-      expect(await viperToken.totalSupply()).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
 
       await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
 
@@ -81,11 +76,11 @@ describe('MasterBreeder::Rewards', () => {
 
       await breeder.connect(bob).deposit(0, expandTo18Decimals(100), ZERO_ADDRESS)
 
-      expect(await viperToken.totalSupply()).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
       
       await breeder.connect(bob).claimReward(0)
-      expect(await viperToken.totalSupply()).to.equal(0)
-      expect(await viperToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(0))
+      expect(await govToken.totalSupply()).to.equal(0)
+      expect(await govToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(0))
     })
 
     it("should pay out VIPER rewards after farming has started", async function () {
@@ -96,11 +91,11 @@ describe('MasterBreeder::Rewards', () => {
       const rewardsPerBlock = 1
       const rewardsStartAtBlock = 100
       const rewardsMultiplierForSecondPool = 5
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-      await viperToken.transferOwnership(breeder.address)
+      await govToken.transferOwnership(breeder.address)
 
-      expect(await viperToken.totalSupply()).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
 
       await breeder.add(rewardsPerBlock, lp.address, true)
 
@@ -121,27 +116,27 @@ describe('MasterBreeder::Rewards', () => {
       // block ~101 - rewards have started & locking period has started
       // 95% rewards should now be locked until block 500
       await expect(breeder.connect(bob).claimReward(0))
-        .to.emit(breeder, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
+        .to.emit(breeder, 'SendGovernanceTokenReward') // emit SendGovernanceTokenReward(msg.sender, _pid, pending, lockAmount);
         .withArgs(bob.address, 0, '254080000000000000000', '241376000000000000000')
       
-      if (debugMessages) humanBalance(provider, viperToken, 'totalSupply')
-      const totalSupplyAfterBobClaim = await viperToken.totalSupply()
+      if (debugMessages) humanBalance(provider, govToken, 'totalSupply')
+      const totalSupplyAfterBobClaim = await govToken.totalSupply()
       expect(totalSupplyAfterBobClaim).to.equal('307200000000000000000')
 
       const { forDev, forFarmer, forLP, forCom, forFounders } = await breeder.getPoolReward(currentBlock.number, currentBlock.number+1, rewardsPerBlock)
       //console.log({forDev, forFarmer, forLP, forCom, forFounders})
       expect(totalSupplyAfterBobClaim).to.equal(forDev.add(forFarmer).add(forLP).add(forCom).add(forFounders))
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      let bobBalanceOf = await viperToken.balanceOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      let bobBalanceOf = await govToken.balanceOf(bob.address)
       expect(bobBalanceOf).to.equal('12704000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      let bobLockOf = await viperToken.lockOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      let bobLockOf = await govToken.lockOf(bob.address)
       expect(bobLockOf).to.eq('241376000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      let bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      let bobTotalBalanceOf = await govToken.totalBalanceOf(bob.address)
       expect(bobTotalBalanceOf).to.equal('254080000000000000000')
 
       // block ~102 - add new pool + Carol deposits
@@ -151,21 +146,21 @@ describe('MasterBreeder::Rewards', () => {
 
       // she should have two times (two sets of rewards since we're at block 102) 5x (=10x) of Bob's block 101 rewards
       await expect(breeder.connect(carol).claimReward(1))
-        .to.emit(breeder, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
+        .to.emit(breeder, 'SendGovernanceTokenReward') // emit SendGovernanceTokenReward(msg.sender, _pid, pending, lockAmount);
         .withArgs(carol.address, 1, '211733333333300250000', '201146666666635237500')
     
       // After Carol has claimed her rewards
-      if (debugMessages) humanBalance(provider, viperToken, 'totalSupply')
-      expect(await viperToken.totalSupply()).to.gt(totalSupplyAfterBobClaim)
+      if (debugMessages) humanBalance(provider, govToken, 'totalSupply')
+      expect(await govToken.totalSupply()).to.gt(totalSupplyAfterBobClaim)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', carol.address, 'carol.address')
-      expect(await viperToken.balanceOf(carol.address)).to.lt(bobBalanceOf)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', carol.address, 'carol.address')
+      expect(await govToken.balanceOf(carol.address)).to.lt(bobBalanceOf)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', carol.address, 'carol.address')
-      expect(await viperToken.lockOf(carol.address)).to.lt(bobLockOf)
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', carol.address, 'carol.address')
+      expect(await govToken.lockOf(carol.address)).to.lt(bobLockOf)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', carol.address, 'carol.address')
-      expect(await viperToken.totalBalanceOf(carol.address)).to.lt(bobTotalBalanceOf)
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', carol.address, 'carol.address')
+      expect(await govToken.totalBalanceOf(carol.address)).to.lt(bobTotalBalanceOf)
 
       // Bob now joins pool 2 in order to verify that he can claim from all pools at once
       await lp2.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
@@ -178,16 +173,16 @@ describe('MasterBreeder::Rewards', () => {
       expect('claimReward').to.be.calledOnContractWith(breeder, [0]);
       expect('claimReward').to.be.calledOnContractWith(breeder, [1]);
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      bobBalanceOf = await viperToken.balanceOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      bobBalanceOf = await govToken.balanceOf(bob.address)
       expect(bobBalanceOf).to.equal('50815999999995037500')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      bobLockOf = await viperToken.lockOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      bobLockOf = await govToken.lockOf(bob.address)
       expect(bobLockOf).to.eq('965503999999905712500')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      bobTotalBalanceOf = await viperToken.totalBalanceOf(bob.address)
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      bobTotalBalanceOf = await govToken.totalBalanceOf(bob.address)
       expect(bobTotalBalanceOf).to.equal('1016319999999900750000')
     })
 
@@ -198,11 +193,11 @@ describe('MasterBreeder::Rewards', () => {
       // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
       const rewardsStartAtBlock = 150
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-      await viperToken.transferOwnership(breeder.address)
+      await govToken.transferOwnership(breeder.address)
 
-      expect(await viperToken.totalSupply()).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
 
       await breeder.add(rewardsPerBlock, lp.address, true)
       await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
@@ -215,97 +210,97 @@ describe('MasterBreeder::Rewards', () => {
       // 95% rewards should now be locked until block 500
 
       await expect(breeder.connect(bob).claimReward(0))
-        .to.emit(breeder, 'SendViperReward') // emit SendViperReward(msg.sender, _pid, pending, lockAmount);
+        .to.emit(breeder, 'SendGovernanceTokenReward') // emit SendGovernanceTokenReward(msg.sender, _pid, pending, lockAmount);
         .withArgs(bob.address, 0, '508160000000000000000', '482752000000000000000')
       
-      expect(await viperToken.totalSupply()).to.equal('614400000000000000000')
+      expect(await govToken.totalSupply()).to.equal('614400000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('25408000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('25408000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('482752000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('482752000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       // community, developer, founder & lp reward funds should now have been rewarded with tokens
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', dev.address, 'dev.address')
-      expect(await viperToken.balanceOf(dev.address)).to.gt(0)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', dev.address, 'dev.address')
+      expect(await govToken.balanceOf(dev.address)).to.gt(0)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', liquidityFund.address, 'liquidityFund.address')
-      expect(await viperToken.balanceOf(liquidityFund.address)).to.gt(0)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', liquidityFund.address, 'liquidityFund.address')
+      expect(await govToken.balanceOf(liquidityFund.address)).to.gt(0)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', communityFund.address, 'communityFund.address')
-      expect(await viperToken.balanceOf(communityFund.address)).to.gt(0)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', communityFund.address, 'communityFund.address')
+      expect(await govToken.balanceOf(communityFund.address)).to.gt(0)
 
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', founderFund.address, 'founderFund.address')
-      expect(await viperToken.balanceOf(founderFund.address)).to.gt(0)
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', founderFund.address, 'founderFund.address')
+      expect(await govToken.balanceOf(founderFund.address)).to.gt(0)
 
       // Advance to the start of the locking period + 1 block
       await advanceBlockTo(provider, LOCK_FROM_BLOCK+1)
 
       // Balances should still remain the same...
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('25408000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('25408000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('482752000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('482752000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
       // Advance to the end of the lock period - 50 blocks
       // User should now be able to claim even more of the locked rewards
       await advanceBlockTo(provider, LOCK_TO_BLOCK-50)
-      await expect(viperToken.connect(bob).unlock())
-        .to.emit(viperToken, 'Transfer')
-        .withArgs(viperToken.address, bob.address, '388132608000000000000')
+      await expect(govToken.connect(bob).unlock())
+        .to.emit(govToken, 'Transfer')
+        .withArgs(govToken.address, bob.address, '388132608000000000000')
       
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('413540608000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('413540608000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('94619392000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('94619392000000000000')
 
       // Advance to the end of the lock period + 10 blocks
       await advanceBlockTo(provider, LOCK_TO_BLOCK+10)
 
       // We haven't called unlock() yet - balances should remain the same
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('413540608000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('413540608000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('94619392000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('94619392000000000000')
 
-      expect(await viperToken.canUnlockAmount(bob.address)).to.eq('94619392000000000000')
+      expect(await govToken.canUnlockAmount(bob.address)).to.eq('94619392000000000000')
 
-      await expect(viperToken.connect(bob).unlock())
-        .to.emit(viperToken, 'Transfer')
-        .withArgs(viperToken.address, bob.address, '94619392000000000000')
+      await expect(govToken.connect(bob).unlock())
+        .to.emit(govToken, 'Transfer')
+        .withArgs(govToken.address, bob.address, '94619392000000000000')
       
       const currentBlock = await latestBlock(provider)
-      const lastUnlockBlock = await viperToken.lastUnlockBlock(bob.address)
+      const lastUnlockBlock = await govToken.lastUnlockBlock(bob.address)
       expect(lastUnlockBlock.toNumber()).to.lte(currentBlock.number)
       
       // unlock() has been called - bob should now have 0 locked tokens & 100% unlocked tokens
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('508160000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('508160000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('0')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('0')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalLock')
-      expect(await viperToken.totalLock()).to.eq('77824000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalLock')
+      expect(await govToken.totalLock()).to.eq('77824000000000000000')
     })
 
     it("should not distribute VIPERs if no one deposit", async function () {
@@ -313,17 +308,17 @@ describe('MasterBreeder::Rewards', () => {
       const debugMessages = false
       // 1 per block farming rate starting at block 600 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 600, 1000)
-      await viperToken.transferOwnership(breeder.address)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), 600, 1000)
+      await govToken.transferOwnership(breeder.address)
       await breeder.add(rewardsPerBlock, lp.address, true)
       await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
 
       await advanceBlockTo(provider, 599)
-      expect(await viperToken.totalSupply()).to.equal(0) // block 600
+      expect(await govToken.totalSupply()).to.equal(0) // block 600
 
       await advanceBlockTo(provider, 604)
       // block 605:
-      expect(await viperToken.totalSupply()).to.equal(0) // block 605
+      expect(await govToken.totalSupply()).to.equal(0) // block 605
 
       await advanceBlockTo(provider, 609)
       // block 610: 
@@ -331,9 +326,9 @@ describe('MasterBreeder::Rewards', () => {
         .to.emit(breeder, 'Deposit') //emit Deposit(msg.sender, _pid, _amount);
         .withArgs(bob.address, 0, expandTo18Decimals(10))
       
-      expect(await viperToken.totalSupply()).to.equal(0)
-      expect(await viperToken.balanceOf(bob.address)).to.equal(0)
-      expect(await viperToken.balanceOf(dev.address)).to.equal(0)
+      expect(await govToken.totalSupply()).to.equal(0)
+      expect(await govToken.balanceOf(bob.address)).to.equal(0)
+      expect(await govToken.balanceOf(dev.address)).to.equal(0)
       expect(await lp.balanceOf(bob.address)).to.equal(expandTo18Decimals((990)))
       
       await advanceBlockTo(provider, 619)
@@ -350,25 +345,25 @@ describe('MasterBreeder::Rewards', () => {
         .to.emit(breeder, 'Withdraw') //emit Withdraw(msg.sender, _pid, _amount);
         .withArgs(bob.address, 0, likelyDeposit)
       
-      if (debugMessages) humanBalance(provider, viperToken, 'balanceOf', bob.address, 'bob.address')
-      expect(await viperToken.balanceOf(bob.address)).to.equal('127040000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'balanceOf', bob.address, 'bob.address')
+      expect(await govToken.balanceOf(bob.address)).to.equal('127040000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'lockOf', bob.address, 'bob.address')
-      expect(await viperToken.lockOf(bob.address)).to.eq('2413760000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'lockOf', bob.address, 'bob.address')
+      expect(await govToken.lockOf(bob.address)).to.eq('2413760000000000000000')
 
-      if (debugMessages) humanBalance(provider, viperToken, 'totalBalanceOf', bob.address, 'bob.address')
-      expect(await viperToken.totalBalanceOf(bob.address)).to.equal('2540800000000000000000')
+      if (debugMessages) humanBalance(provider, govToken, 'totalBalanceOf', bob.address, 'bob.address')
+      expect(await govToken.totalBalanceOf(bob.address)).to.equal('2540800000000000000000')
 
-      expect(await viperToken.totalSupply()).to.equal('3072000000000000000000')
+      expect(await govToken.totalSupply()).to.equal('3072000000000000000000')
       expect(await lp.balanceOf(bob.address)).to.gte(likelyDeposit)
     })
 
     it("should distribute VIPERs properly for each staker"), async () => {
       // 1 per block farming rate starting at block 300 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 300, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), 300, 1000)
 
-      await viperToken.transferOwnership(breeder.address)
+      await govToken.transferOwnership(breeder.address)
       await breeder.add(rewardsPerBlock, lp.address, true)
       await lp.connect(alice).approve(breeder.address, expandTo18Decimals(1000))
       await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
@@ -387,22 +382,22 @@ describe('MasterBreeder::Rewards', () => {
       //   MasterChef should have the remaining: 10000 - 5666 = 4334
       await advanceBlockTo(provider, 319)
       await breeder.connect(alice).deposit(0, expandTo18Decimals(10), ZERO_ADDRESS)
-      expect(await viperToken.totalSupply()).to.equal(expandTo18Decimals(11000))
-      expect(await viperToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(5666))
-      expect(await viperToken.balanceOf(bob.address)).to.equal(0)
-      expect(await viperToken.balanceOf(carol.address)).to.equal(0)
-      expect(await viperToken.balanceOf(breeder.address)).to.equal(expandTo18Decimals(4334))
-      expect(await viperToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(1000))
+      expect(await govToken.totalSupply()).to.equal(expandTo18Decimals(11000))
+      expect(await govToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(5666))
+      expect(await govToken.balanceOf(bob.address)).to.equal(0)
+      expect(await govToken.balanceOf(carol.address)).to.equal(0)
+      expect(await govToken.balanceOf(breeder.address)).to.equal(expandTo18Decimals(4334))
+      expect(await govToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(1000))
       // Bob withdraws 5 LPs at block 330. At this point:
       //   Bob should have: 4*2/3*1000 + 2*2/6*1000 + 10*2/7*1000 = 6190
       await advanceBlockTo(provider, 329)
       await breeder.connect(bob).withdraw(0, expandTo18Decimals(5), ZERO_ADDRESS)
-      expect(await viperToken.totalSupply()).to.equal(expandTo18Decimals(22000))
-      expect(await viperToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(5666))
-      expect(await viperToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(6190))
-      expect(await viperToken.balanceOf(carol.address)).to.equal(0)
-      expect(await viperToken.balanceOf(breeder.address)).to.equal(expandTo18Decimals(8144))
-      expect(await viperToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(2000))
+      expect(await govToken.totalSupply()).to.equal(expandTo18Decimals(22000))
+      expect(await govToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(5666))
+      expect(await govToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(6190))
+      expect(await govToken.balanceOf(carol.address)).to.equal(0)
+      expect(await govToken.balanceOf(breeder.address)).to.equal(expandTo18Decimals(8144))
+      expect(await govToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(2000))
       // Alice withdraws 20 LPs at block 340.
       // Bob withdraws 15 LPs at block 350.
       // Carol withdraws 30 LPs at block 360.
@@ -412,14 +407,14 @@ describe('MasterBreeder::Rewards', () => {
       await breeder.connect(bob).withdraw(0, expandTo18Decimals(15), ZERO_ADDRESS)
       await advanceBlockTo(provider, 359)
       await breeder.connect(carol).withdraw(0, expandTo18Decimals(30), ZERO_ADDRESS)
-      expect(await viperToken.totalSupply()).to.equal(expandTo18Decimals(55000))
-      expect(await viperToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(5000))
+      expect(await govToken.totalSupply()).to.equal(expandTo18Decimals(55000))
+      expect(await govToken.balanceOf(dev.address)).to.equal(expandTo18Decimals(5000))
       // Alice should have: 5666 + 10*2/7*1000 + 10*2/6.5*1000 = 11600
-      expect(await viperToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(11600))
+      expect(await govToken.balanceOf(alice.address)).to.equal(expandTo18Decimals(11600))
       // Bob should have: 6190 + 10*1.5/6.5 * 1000 + 10*1.5/4.5*1000 = 11831
-      expect(await viperToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(11831))
+      expect(await govToken.balanceOf(bob.address)).to.equal(expandTo18Decimals(11831))
       // Carol should have: 2*3/6*1000 + 10*3/7*1000 + 10*3/6.5*1000 + 10*3/4.5*1000 + 10*1000 = 26568
-      expect(await viperToken.balanceOf(carol.address)).to.equal(expandTo18Decimals(26568))
+      expect(await govToken.balanceOf(carol.address)).to.equal(expandTo18Decimals(26568))
       // All of them should have 1000 LPs back.
       expect(await lp.balanceOf(alice.address)).to.equal(expandTo18Decimals(1000))
       expect(await lp.balanceOf(bob.address)).to.equal(expandTo18Decimals(1000))
@@ -429,9 +424,9 @@ describe('MasterBreeder::Rewards', () => {
     it("should give proper VIPERs allocation to each pool"), async () => {
       // 100 per block farming rate starting at block 400 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 400, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), 400, 1000)
 
-      await viperToken.transferOwnership(breeder.address)
+      await govToken.transferOwnership(breeder.address)
       await lp.connect(alice).approve(breeder.address, expandTo18Decimals(1000))
       await lp2.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
       // Add first LP to the pool with allocation 1

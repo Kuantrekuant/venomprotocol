@@ -4,15 +4,11 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
+import { deployMasterBreeder, deployGovernanceToken } from '../shared/deploy'
 
-import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
-
-const LOCK_FROM_BLOCK = 250
-const LOCK_TO_BLOCK = 500
 
 // Referrals aren't actively used by the MasterBreeder contract - no automatic payouts will be handed out to the referrer on deposits & withdrawals
 // The referral tracking system can be used for a later stage airdrop (e.g. airdropping funds from the community funds address to referrers) or other initiatives 
@@ -25,12 +21,12 @@ describe('MasterBreeder::Referrals', () => {
   const wallets = provider.getWallets()
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  let viperToken: Contract
+  let govToken: Contract
   let lp: Contract
   let breeder: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    govToken = await deployGovernanceToken(alice)
     
     lp = await deployContract(minter, ERC20Mock, ["LPToken", "LP", expandTo18Decimals(1000000)])
     await lp.transfer(alice.address, expandTo18Decimals(1000))
@@ -40,11 +36,11 @@ describe('MasterBreeder::Referrals', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
-    expect(await viperToken.totalSupply()).to.equal(0)
+    expect(await govToken.totalSupply()).to.equal(0)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
   })

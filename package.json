@@ -1,8 +1,8 @@
 {
-  "name": "@viperswap/contracts",
-  "version": "1.0.6",
+  "name": "@venomswap/contracts",
+  "version": "1.0.0",
   "license": "MIT",
-  "description": "🐍 Token + 🧑‍🌾 Liquidity Mining contracts for ViperSwap & the Viper Protocol",
+  "description": "🐍 Token + 🧑‍🌾 Liquidity Mining contracts for VenomSwap & the Venom Protocol",
   "files": [
     "contracts",
     "build"
@@ -10,14 +10,16 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ViperProtocol/viperswap-contracts.git"
+    "url": "git+https://github.com/VenomProtocol/venomswap-contracts.git"
   },
   "bugs": {
-    "url": "https://github.com/ViperProtocol/viperswap-contracts/issues"
+    "url": "https://github.com/VenomProtocol/venomswap-contracts/issues"
   },
-  "homepage": "https://github.com/ViperProtocol/viperswap-contracts#readme",
+  "homepage": "https://github.com/VenomProtocol/venomswap-contracts#readme",
   "keywords": [
-    "viperswap",
+    "venomprotocol",
+    "venomdao",
+    "venomswap",
     "ethereum",
     "binance smart chain",
     "harmony"
@@ -38,9 +40,9 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.1.0",
-    "@viperswap/core": "^1.0.2",
-    "@viperswap/lib": "^1.0.1",
-    "@viperswap/periphery": "^1.0.1"
+    "@venomswap/core": "^1.0.0",
+    "@venomswap/lib": "^1.0.0",
+    "@venomswap/periphery": "^1.0.0"
   },
   "scripts": {
     "lint": "yarn prettier ./test/*.ts --check",

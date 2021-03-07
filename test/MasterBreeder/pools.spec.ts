@@ -4,16 +4,11 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
+import { deployMasterBreeder, deployGovernanceToken } from '../shared/deploy'
 
-import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
-
-// Viper token locks
-const LOCK_FROM_BLOCK = 250
-const LOCK_TO_BLOCK = 500
 
 describe('MasterBreeder::Pools', () => {
   const provider = new MockProvider({
@@ -24,12 +19,12 @@ describe('MasterBreeder::Pools', () => {
   const wallets = provider.getWallets()
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  let viperToken: Contract
+  let govToken: Contract
   let lp: Contract
   let lp2: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    govToken = await deployGovernanceToken(alice)
 
     lp = await deployContract(minter, ERC20Mock, ["LPToken", "LP", expandTo18Decimals(1000000)])
     await lp.transfer(alice.address, expandTo18Decimals(1000))
@@ -46,9 +41,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
 
@@ -60,9 +55,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
 
@@ -76,9 +71,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await expect(breeder.connect(bob).add(rewardsPerBlock, lp.address, true)).to.be.revertedWith("Ownable: caller is not the owner")
     expect(await breeder.poolLength()).to.equal(0)
@@ -89,9 +84,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
     expect(await breeder.poolLength()).to.equal(1)
@@ -106,9 +101,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
     expect(await breeder.poolLength()).to.equal(1)
@@ -123,9 +118,9 @@ describe('MasterBreeder::Pools', () => {
     // 1 VIPER per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
     const rewardsPerBlock = 1
     const rewardsStartAtBlock = 100
-    const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
+    const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), rewardsStartAtBlock, 1000)
 
-    await viperToken.transferOwnership(breeder.address)
+    await govToken.transferOwnership(breeder.address)
 
     await breeder.add(rewardsPerBlock, lp.address, true)
     expect(await breeder.poolLength()).to.equal(1)

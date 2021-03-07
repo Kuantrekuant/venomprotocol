@@ -2,8 +2,8 @@
 
 pragma solidity 0.6.12;
 
-import "@viperswap/core/contracts/UniswapV2Pair.sol";
+import "@venomswap/core/contracts/UniswapV2Pair.sol";
 
-contract ViperSwapPairMock is UniswapV2Pair {
+contract VenomSwapPairMock is UniswapV2Pair {
     constructor() public UniswapV2Pair() {}
 }

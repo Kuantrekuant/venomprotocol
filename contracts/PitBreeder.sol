@@ -3,16 +3,16 @@
 // P1 - P3: OK
 pragma solidity 0.6.12;
 
-import "@viperswap/core/contracts/interfaces/IUniswapV2Factory.sol";
-import "@viperswap/core/contracts/interfaces/IUniswapV2Pair.sol";
-import "@viperswap/core/contracts/interfaces/IUniswapV2ERC20.sol";
+import "@venomswap/core/contracts/interfaces/IUniswapV2Factory.sol";
+import "@venomswap/core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@venomswap/core/contracts/interfaces/IUniswapV2ERC20.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// PitBreeder is MasterBreeder's left hand and a prized Viper breeder.
-// This contract handles "serving up" rewards for xViper holders by trading tokens collected from fees for Viper.
+// PitBreeder is MasterBreeder's left hand and a prized breeder.
+// This contract handles "serving up" rewards for xGovernanceToken holders by trading tokens collected from fees for GovernanceToken.
 
 // T1 - T4: OK
 contract PitBreeder is Ownable {
@@ -26,7 +26,7 @@ contract PitBreeder is Ownable {
     address public immutable pit;
     //0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272
     // V1 - V5: OK
-    address private immutable viper;
+    address private immutable govToken;
     //0x6B3595068778DD592e39A122f4f5a5cF09C90fE2
     // V1 - V5: OK
     address private immutable weth;
@@ -44,18 +44,18 @@ contract PitBreeder is Ownable {
         address indexed token1,
         uint256 amount0,
         uint256 amount1,
-        uint256 amountVIPER
+        uint256 amountGovToken
     );
 
     constructor(
         address _factory,
         address _pit,
-        address _viper,
+        address _govToken,
         address _weth
     ) public {
         factory = IUniswapV2Factory(_factory);
         pit = _pit;
-        viper = _viper;
+        govToken = _govToken;
         weth = _weth;
     }
 
@@ -73,7 +73,7 @@ contract PitBreeder is Ownable {
     function setBridge(address token, address bridge) external onlyOwner {
         // Checks
         require(
-            token != viper && token != weth && token != bridge,
+            token != govToken && token != weth && token != bridge,
             "PitBreeder: Invalid bridge"
         );
 
@@ -93,8 +93,8 @@ contract PitBreeder is Ownable {
 
     // F1 - F10: OK
     // F3: _convert is separate to save gas by only checking the 'onlyEOA' modifier once in case of convertMultiple
-    // F6: There is an exploit to add lots of VIPER to the pit, run convert, then remove the VIPER again.
-    //     As the size of the ViperPit has grown, this requires large amounts of funds and isn't super profitable anymore
+    // F6: There is an exploit to add lots of GovernanceTokens to the pit, run convert, then remove the GovernanceTokens again.
+    //     As the size of the Pit has grown, this requires large amounts of funds and isn't super profitable anymore
     //     The onlyEOA modifier prevents this being done with a flash loan.
     // C1 - C24: OK
     function convert(address token0, address token1) external onlyEOA() {
@@ -145,43 +145,43 @@ contract PitBreeder is Ownable {
 
     // F1 - F10: OK
     // C1 - C24: OK
-    // All safeTransfer, _swap, _toVIPER, _convertStep: X1 - X5: OK
+    // All safeTransfer, _swap, _toGovToken, _convertStep: X1 - X5: OK
     function _convertStep(
         address token0,
         address token1,
         uint256 amount0,
         uint256 amount1
-    ) internal returns (uint256 viperOut) {
+    ) internal returns (uint256 govTokenOut) {
         // Interactions
         if (token0 == token1) {
             uint256 amount = amount0.add(amount1);
-            if (token0 == viper) {
-                IERC20(viper).safeTransfer(pit, amount);
-                viperOut = amount;
+            if (token0 == govToken) {
+                IERC20(govToken).safeTransfer(pit, amount);
+                govTokenOut = amount;
             } else if (token0 == weth) {
-                viperOut = _toVIPER(weth, amount);
+                govTokenOut = _toGovToken(weth, amount);
             } else {
                 address bridge = bridgeFor(token0);
                 amount = _swap(token0, bridge, amount, address(this));
-                viperOut = _convertStep(bridge, bridge, amount, 0);
+                govTokenOut = _convertStep(bridge, bridge, amount, 0);
             }
-        } else if (token0 == viper) {
-            // eg. VIPER - ETH
-            IERC20(viper).safeTransfer(pit, amount0);
-            viperOut = _toVIPER(token1, amount1).add(amount0);
-        } else if (token1 == viper) {
-            // eg. USDT - VIPER
-            IERC20(viper).safeTransfer(pit, amount1);
-            viperOut = _toVIPER(token0, amount0).add(amount1);
+        } else if (token0 == govToken) {
+            // eg. GovToken - ETH
+            IERC20(govToken).safeTransfer(pit, amount0);
+            govTokenOut = _toGovToken(token1, amount1).add(amount0);
+        } else if (token1 == govToken) {
+            // eg. USDT - GovToken
+            IERC20(govToken).safeTransfer(pit, amount1);
+            govTokenOut = _toGovToken(token0, amount0).add(amount1);
         } else if (token0 == weth) {
             // eg. ETH - USDC
-            viperOut = _toVIPER(
+            govTokenOut = _toGovToken(
                 weth,
                 _swap(token1, weth, amount1, address(this)).add(amount0)
             );
         } else if (token1 == weth) {
             // eg. USDT - ETH
-            viperOut = _toVIPER(
+            govTokenOut = _toGovToken(
                 weth,
                 _swap(token0, weth, amount0, address(this)).add(amount1)
             );
@@ -191,7 +191,7 @@ contract PitBreeder is Ownable {
             address bridge1 = bridgeFor(token1);
             if (bridge0 == token1) {
                 // eg. MIC - USDT - and bridgeFor(MIC) = USDT
-                viperOut = _convertStep(
+                govTokenOut = _convertStep(
                     bridge0,
                     token1,
                     _swap(token0, bridge0, amount0, address(this)),
@@ -199,14 +199,14 @@ contract PitBreeder is Ownable {
                 );
             } else if (bridge1 == token0) {
                 // eg. WBTC - DSD - and bridgeFor(DSD) = WBTC
-                viperOut = _convertStep(
+                govTokenOut = _convertStep(
                     token0,
                     bridge1,
                     amount0,
                     _swap(token1, bridge1, amount1, address(this))
                 );
             } else {
-                viperOut = _convertStep(
+                govTokenOut = _convertStep(
                     bridge0,
                     bridge1, // eg. USDT - DSD - and bridgeFor(DSD) = WBTC
                     _swap(token0, bridge0, amount0, address(this)),
@@ -254,11 +254,11 @@ contract PitBreeder is Ownable {
 
     // F1 - F10: OK
     // C1 - C24: OK
-    function _toVIPER(address token, uint256 amountIn)
+    function _toGovToken(address token, uint256 amountIn)
         internal
         returns (uint256 amountOut)
     {
         // X1 - X5: OK
-        amountOut = _swap(token, viper, amountIn, pit);
+        amountOut = _swap(token, govToken, amountIn, pit);
     }
 }
