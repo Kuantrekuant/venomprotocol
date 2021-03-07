@@ -13,7 +13,7 @@ contract Pit is ERC20 {
     using SafeMath for uint256;
     IERC20 public govToken;
 
-    // Define the Viper token contract
+    // Define the Pit token contract
     constructor(
       string memory _name,
       string memory _symbol,
@@ -23,31 +23,31 @@ contract Pit is ERC20 {
     }
 
     // Enter the bar. Pay some SUSHIs. Earn some shares.
-    // Locks Viper and mints xViper
+    // Locks GovernanceToken and mints xGovernanceToken
     function enter(uint256 _amount) public {
-        // Gets the amount of Viper locked in the contract
-        uint256 totalViper = govToken.balanceOf(address(this));
-        // Gets the amount of xViper in existence
+        // Gets the amount of GovernanceToken locked in the contract
+        uint256 totalGovernanceToken = govToken.balanceOf(address(this));
+        // Gets the amount of xGovernanceToken in existence
         uint256 totalShares = totalSupply();
-        // If no xViper exists, mint it 1:1 to the amount put in
-        if (totalShares == 0 || totalViper == 0) {
+        // If no xGovernanceToken exists, mint it 1:1 to the amount put in
+        if (totalShares == 0 || totalGovernanceToken == 0) {
             _mint(msg.sender, _amount);
         }
-        // Calculate and mint the amount of xViper the Viper is worth. The ratio will change overtime, as xViper is burned/minted and Viper deposited + gained from fees / withdrawn.
+        // Calculate and mint the amount of xGovernanceToken the GovernanceToken is worth. The ratio will change overtime, as xGovernanceToken is burned/minted and GovernanceToken deposited + gained from fees / withdrawn.
         else {
-            uint256 what = _amount.mul(totalShares).div(totalViper);
+            uint256 what = _amount.mul(totalShares).div(totalGovernanceToken);
             _mint(msg.sender, what);
         }
-        // Lock the Viper in the contract
+        // Lock the GovernanceToken in the contract
         govToken.transferFrom(msg.sender, address(this), _amount);
     }
 
     // Leave the bar. Claim back your SUSHIs.
-    // Unclocks the staked + gained Viper and burns xViper
+    // Unclocks the staked + gained GovernanceToken and burns xGovernanceToken
     function leave(uint256 _share) public {
-        // Gets the amount of xViper in existence
+        // Gets the amount of xGovernanceToken in existence
         uint256 totalShares = totalSupply();
-        // Calculates the amount of Viper the xViper is worth
+        // Calculates the amount of GovernanceToken the xGovernanceToken is worth
         uint256 what =
             _share.mul(govToken.balanceOf(address(this))).div(totalShares);
         _burn(msg.sender, _share);
