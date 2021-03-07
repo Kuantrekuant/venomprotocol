@@ -4,17 +4,18 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals, advanceBlockTo, latestBlock } from './shared/utilities'
 
-import Viper from '../build/Viper.json'
+import GovernanceToken from '../build/GovernanceToken.json'
 
 chai.use(solidity)
 
 const TOTAL_SUPPLY = expandTo18Decimals(1000000)
-const TOTAL_CAP = expandTo18Decimals(500000000)
 const REGULAR_MINT_AMOUNT = expandTo18Decimals(20000)
-const MANUAL_MINT_LIMIT = expandTo18Decimals(50000)
 const NO_MANUAL_MINTED = 0
 const MANUAL_MINT_AMOUNT = expandTo18Decimals(999)
 const TEST_AMOUNT = expandTo18Decimals(10)
+
+const TOTAL_CAP = expandTo18Decimals(500000000)
+const MANUAL_MINT_LIMIT = expandTo18Decimals(50000)
 const LOCK_FROM_BLOCK = 100
 const LOCK_TO_BLOCK = 200
 
@@ -28,7 +29,7 @@ describe('Viper', () => {
 
   let token: Contract
   beforeEach(async () => {
-    token = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    token = await deployContract(alice, GovernanceToken, ["Viper", "VIPER", TOTAL_CAP, MANUAL_MINT_LIMIT, LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
     await token.mint(alice.address, TOTAL_SUPPLY)
   })
 

@@ -2,10 +2,33 @@ import { Contract, Wallet } from 'ethers'
 import { deployContract } from 'ethereum-waffle'
 import { BigNumberish } from 'ethers/utils'
 
+import { expandTo18Decimals } from './utilities'
+
 import MasterBreeder from '../../build/MasterBreeder.json'
+import GovernanceToken from '../../build/GovernanceToken.json'
 
 const overrides = {
   gasLimit: 9999999
+}
+
+export const TOKEN_NAME = "Viper"
+export const TOKEN_SYMBOL = "VIPER"
+export const TOTAL_CAP = expandTo18Decimals(500000000) // 500m
+export const MANUAL_MINT_LIMIT = expandTo18Decimals(50000) // 50k
+export const LOCK_FROM_BLOCK = 100
+export const LOCK_TO_BLOCK = 200
+
+export async function deployGovernanceToken(
+  wallet: Wallet,
+  name = TOKEN_NAME,
+  symbol = TOKEN_SYMBOL,
+  totalCap = TOTAL_CAP,
+  manualMintLimit = MANUAL_MINT_LIMIT,
+  lockFromBlock = LOCK_FROM_BLOCK,
+  lockToBlock = LOCK_TO_BLOCK
+): Promise<Contract> {
+  const token = await deployContract(wallet, GovernanceToken, [name, symbol, totalCap, manualMintLimit, lockFromBlock, lockToBlock])
+  return token
 }
 
 export async function deployMasterBreeder(

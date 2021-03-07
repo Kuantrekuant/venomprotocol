@@ -6,23 +6,27 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// ViperPit is a pit full of vipers with a tendency to breed. The longer you stay, the more Vipers you get.
-//
-// This contract handles swapping to and from xViper, ViperSwap's staking token.
-contract ViperPit is ERC20("ViperPit", "xVIPER") {
+// The Pit is a pit full of creatures with a tendency to breed.
+// The longer you stay, the more creatures you end up with when you leave.
+// This contract handles swapping to and from xGovernanceToken <> GovernanceToken
+contract Pit is ERC20 {
     using SafeMath for uint256;
-    IERC20 public viper;
+    IERC20 public govToken;
 
     // Define the Viper token contract
-    constructor(IERC20 _viper) public {
-        viper = _viper;
+    constructor(
+      string memory _name,
+      string memory _symbol,
+      IERC20 _govToken
+    ) public ERC20(_name, _symbol) {
+        govToken = _govToken;
     }
 
     // Enter the bar. Pay some SUSHIs. Earn some shares.
     // Locks Viper and mints xViper
     function enter(uint256 _amount) public {
         // Gets the amount of Viper locked in the contract
-        uint256 totalViper = viper.balanceOf(address(this));
+        uint256 totalViper = govToken.balanceOf(address(this));
         // Gets the amount of xViper in existence
         uint256 totalShares = totalSupply();
         // If no xViper exists, mint it 1:1 to the amount put in
@@ -35,7 +39,7 @@ contract ViperPit is ERC20("ViperPit", "xVIPER") {
             _mint(msg.sender, what);
         }
         // Lock the Viper in the contract
-        viper.transferFrom(msg.sender, address(this), _amount);
+        govToken.transferFrom(msg.sender, address(this), _amount);
     }
 
     // Leave the bar. Claim back your SUSHIs.
@@ -45,8 +49,8 @@ contract ViperPit is ERC20("ViperPit", "xVIPER") {
         uint256 totalShares = totalSupply();
         // Calculates the amount of Viper the xViper is worth
         uint256 what =
-            _share.mul(viper.balanceOf(address(this))).div(totalShares);
+            _share.mul(govToken.balanceOf(address(this))).div(totalShares);
         _burn(msg.sender, _share);
-        viper.transfer(msg.sender, what);
+        govToken.transfer(msg.sender, what);
     }
 }

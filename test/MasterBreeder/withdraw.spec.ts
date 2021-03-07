@@ -4,9 +4,8 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
+import { deployMasterBreeder, deployGovernanceToken, TOKEN_NAME, TOKEN_SYMBOL, TOTAL_CAP, MANUAL_MINT_LIMIT } from '../shared/deploy'
 
-import Viper from '../../build/Viper.json'
 import ERC20Mock from '../../build/ERC20Mock.json'
 
 chai.use(solidity)
@@ -26,10 +25,10 @@ describe('MasterBreeder::Rewards', () => {
   const wallets = provider.getWallets()
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  let viperToken: Contract
+  let govToken: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    govToken = await deployGovernanceToken(alice, TOKEN_NAME, TOKEN_SYMBOL, TOTAL_CAP, MANUAL_MINT_LIMIT, LOCK_FROM_BLOCK, LOCK_TO_BLOCK)
   })
 
   context("Entering & withdrawing from pools + claiming rewards", function () {
@@ -52,7 +51,7 @@ describe('MasterBreeder::Rewards', () => {
       this.timeout(0)
       // 1 per block farming rate starting at block 100 with the first halvening block starting 1000 blocks after the start block
       const rewardsPerBlock = 1
-      const breeder = await deployMasterBreeder(wallets, viperToken, expandTo18Decimals(rewardsPerBlock), 100, 1000)
+      const breeder = await deployMasterBreeder(wallets, govToken, expandTo18Decimals(rewardsPerBlock), 100, 1000)
 
       await breeder.add(rewardsPerBlock, lp.address, true)
 

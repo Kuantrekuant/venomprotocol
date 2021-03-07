@@ -8,13 +8,13 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./Viper.sol";
+import "./GovernanceToken.sol";
 import "./Authorizable.sol";
 
-// MasterBreeder is the master breeder of ViperSwap. He breeds new VIPERs.
+// MasterBreeder is the master breeder of whatever creature the GovernanceToken represents.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
-// will be transferred to a governance smart contract once Viper is sufficiently
+// will be transferred to a governance smart contract once GovernanceToken is sufficiently
 // distributed and the community can show to govern itself.
 //
 contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
@@ -31,13 +31,13 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         uint256 blockdelta; //time passed since withdrawals
         uint256 lastDepositBlock;
         //
-        // We do some fancy math here. Basically, any point in time, the amount of Vipers
+        // We do some fancy math here. Basically, any point in time, the amount of GovernanceTokens
         // entitled to a user but is pending to be distributed is:
         //
-        //   pending reward = (user.amount * pool.accViperPerShare) - user.rewardDebt
+        //   pending reward = (user.amount * pool.accGovTokenPerShare) - user.rewardDebt
         //
         // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accViperPerShare` (and `lastRewardBlock`) gets updated.
+        //   1. The pool's `accGovTokenPerShare` (and `lastRewardBlock`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
@@ -53,13 +53,13 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. Vipers to distribute per block.
-        uint256 lastRewardBlock; // Last block number that Vipers distribution occurs.
-        uint256 accViperPerShare; // Accumulated Vipers per share, times 1e12. See below.
+        uint256 allocPoint; // How many allocation points assigned to this pool. GovernanceTokens to distribute per block.
+        uint256 lastRewardBlock; // Last block number that GovernanceTokens distribution occurs.
+        uint256 accGovTokenPerShare; // Accumulated GovernanceTokens per share, times 1e12. See below.
     }
 
-    // The Viper TOKEN!
-    Viper public viper;
+    // The Governance token
+    GovernanceToken public govToken;
     //An ETH/USDC Oracle (Chainlink)
     address public usdOracle;
     // Dev address.
@@ -70,9 +70,9 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     address public comfundaddr;
     // Founder Reward
     address public founderaddr;
-    // Viper tokens created per block.
+    // GovernanceTokens created per block.
     uint256 public REWARD_PER_BLOCK;
-    // Bonus muliplier for early Viper makers.
+    // Bonus muliplier for early GovernanceToken makers.
     uint256[] public REWARD_MULTIPLIER; // init in constructor function
     uint256[] public HALVING_AT_BLOCK; // init in constructor function
     uint256[] public blockDeltaStartStage;
@@ -83,7 +83,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     uint256 public userDepFee;
     uint256 public devDepFee;
 
-    // The block number when Viper mining starts.
+    // The block number when GovernanceToken mining starts.
     uint256 public START_BLOCK;
 
     uint256 public PERCENT_LOCK_BONUS_REWARD; // lock xx% of bounus reward in 3 year
@@ -109,7 +109,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         uint256 indexed pid,
         uint256 amount
     );
-    event SendViperReward(
+    event SendGovernanceTokenReward(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
@@ -122,7 +122,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     }
 
     constructor(
-        Viper _viper,
+        GovernanceToken _govToken,
         address _devaddr,
         address _liquidityaddr,
         address _comfundaddr,
@@ -138,7 +138,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         uint256[] memory _userFeeStage,
         uint256[] memory _devFeeStage
     ) public {
-        viper = _viper;
+        govToken = _govToken;
         devaddr = _devaddr;
         liquidityaddr = _liquidityaddr;
         comfundaddr = _comfundaddr;
@@ -190,12 +190,12 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
                 lpToken: _lpToken,
                 allocPoint: _allocPoint,
                 lastRewardBlock: lastRewardBlock,
-                accViperPerShare: 0
+                accGovTokenPerShare: 0
             })
         );
     }
 
-    // Update the given pool's Viper allocation point. Can only be called by the owner.
+    // Update the given pool's GovernanceToken allocation point. Can only be called by the owner.
     function set(
         uint256 _pid,
         uint256 _allocPoint,
@@ -229,49 +229,49 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
             pool.lastRewardBlock = block.number;
             return;
         }
-        uint256 ViperForDev;
-        uint256 ViperForFarmer;
-        uint256 ViperForLP;
-        uint256 ViperForCom;
-        uint256 ViperForFounders;
+        uint256 GovTokenForDev;
+        uint256 GovTokenForFarmer;
+        uint256 GovTokenForLP;
+        uint256 GovTokenForCom;
+        uint256 GovTokenForFounders;
         (
-            ViperForDev,
-            ViperForFarmer,
-            ViperForLP,
-            ViperForCom,
-            ViperForFounders
+            GovTokenForDev,
+            GovTokenForFarmer,
+            GovTokenForLP,
+            GovTokenForCom,
+            GovTokenForFounders
         ) = getPoolReward(pool.lastRewardBlock, block.number, pool.allocPoint);
-        viper.mint(address(this), ViperForFarmer);
-        pool.accViperPerShare = pool.accViperPerShare.add(
-            ViperForFarmer.mul(1e12).div(lpSupply)
+        govToken.mint(address(this), GovTokenForFarmer);
+        pool.accGovTokenPerShare = pool.accGovTokenPerShare.add(
+            GovTokenForFarmer.mul(1e12).div(lpSupply)
         );
         pool.lastRewardBlock = block.number;
-        if (ViperForDev > 0) {
-            viper.mint(address(devaddr), ViperForDev);
+        if (GovTokenForDev > 0) {
+            govToken.mint(address(devaddr), GovTokenForDev);
             //Dev fund has xx% locked during the starting bonus period. After which locked funds drip out linearly each block over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                viper.lock(address(devaddr), ViperForDev.mul(75).div(100));
+                govToken.lock(address(devaddr), GovTokenForDev.mul(75).div(100));
             }
         }
-        if (ViperForLP > 0) {
-            viper.mint(liquidityaddr, ViperForLP);
+        if (GovTokenForLP > 0) {
+            govToken.mint(liquidityaddr, GovTokenForLP);
             //LP + Partnership fund has only xx% locked over time as most of it is needed early on for incentives and listings. The locked amount will drip out linearly each block after the bonus period.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                viper.lock(address(liquidityaddr), ViperForLP.mul(45).div(100));
+                govToken.lock(address(liquidityaddr), GovTokenForLP.mul(45).div(100));
             }
         }
-        if (ViperForCom > 0) {
-            viper.mint(comfundaddr, ViperForCom);
+        if (GovTokenForCom > 0) {
+            govToken.mint(comfundaddr, GovTokenForCom);
             //Community Fund has xx% locked during bonus period and then drips out linearly over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                viper.lock(address(comfundaddr), ViperForCom.mul(85).div(100));
+                govToken.lock(address(comfundaddr), GovTokenForCom.mul(85).div(100));
             }
         }
-        if (ViperForFounders > 0) {
-            viper.mint(founderaddr, ViperForFounders);
+        if (GovTokenForFounders > 0) {
+            govToken.mint(founderaddr, GovTokenForFounders);
             //The Founders reward has xx% of their funds locked during the bonus period which then drip out linearly per block over 3 years.
             if (block.number <= FINISH_BONUS_AT_BLOCK) {
-                viper.lock(address(founderaddr), ViperForFounders.mul(95).div(100));
+                govToken.lock(address(founderaddr), GovTokenForFounders.mul(95).div(100));
             }
         }
     }
@@ -326,11 +326,11 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
             multiplier.mul(REWARD_PER_BLOCK).mul(_allocPoint).div(
                 totalAllocPoint
             );
-        uint256 ViperCanMint = viper.cap().sub(viper.totalSupply());
+        uint256 GovernanceTokenCanMint = govToken.cap().sub(govToken.totalSupply());
 
-        if (ViperCanMint < amount) {
+        if (GovernanceTokenCanMint < amount) {
             forDev = 0;
-            forFarmer = ViperCanMint;
+            forFarmer = GovernanceTokenCanMint;
             forLP = 0;
             forCom = 0;
             forFounders = 0;
@@ -343,7 +343,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         }
     }
 
-    // View function to see pending Vipers on frontend.
+    // View function to see pending GovernanceTokens on frontend.
     function pendingReward(uint256 _pid, address _user)
         external
         view
@@ -351,20 +351,20 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accViperPerShare = pool.accViperPerShare;
+        uint256 accGovTokenPerShare = pool.accGovTokenPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply > 0) {
-            uint256 ViperForFarmer;
-            (, ViperForFarmer, , , ) = getPoolReward(
+            uint256 GovTokenForFarmer;
+            (, GovTokenForFarmer, , , ) = getPoolReward(
                 pool.lastRewardBlock,
                 block.number,
                 pool.allocPoint
             );
-            accViperPerShare = accViperPerShare.add(
-                ViperForFarmer.mul(1e12).div(lpSupply)
+            accGovTokenPerShare = accGovTokenPerShare.add(
+                GovTokenForFarmer.mul(1e12).div(lpSupply)
             );
         }
-        return user.amount.mul(accViperPerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(accGovTokenPerShare).div(1e12).sub(user.rewardDebt);
     }
 
     function claimRewards(uint256[] memory _pids) public {
@@ -385,31 +385,31 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
 
         if (user.amount > 0) {
             uint256 pending =
-                user.amount.mul(pool.accViperPerShare).div(1e12).sub(
+                user.amount.mul(pool.accGovTokenPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            uint256 masterBal = viper.balanceOf(address(this));
+            uint256 masterBal = govToken.balanceOf(address(this));
 
             if (pending > masterBal) {
                 pending = masterBal;
             }
 
             if (pending > 0) {
-                viper.transfer(msg.sender, pending);
+                govToken.transfer(msg.sender, pending);
                 uint256 lockAmount = 0;
                 if (user.rewardDebtAtBlock <= FINISH_BONUS_AT_BLOCK) {
                     lockAmount = pending.mul(PERCENT_LOCK_BONUS_REWARD).div(
                         100
                     );
-                    viper.lock(msg.sender, lockAmount);
+                    govToken.lock(msg.sender, lockAmount);
                 }
 
                 user.rewardDebtAtBlock = block.number;
 
-                emit SendViperReward(msg.sender, _pid, pending, lockAmount);
+                emit SendGovernanceTokenReward(msg.sender, _pid, pending, lockAmount);
             }
 
-            user.rewardDebt = user.amount.mul(pool.accViperPerShare).div(1e12);
+            user.rewardDebt = user.amount.mul(pool.accGovTokenPerShare).div(1e12);
         }
     }
 
@@ -438,7 +438,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         return a;
     }
 
-    // Deposit LP tokens to MasterBreeder for Viper allocation.
+    // Deposit LP tokens to MasterBreeder for GovernanceToken allocation.
     function deposit(
         uint256 _pid,
         uint256 _amount,
@@ -481,11 +481,11 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         user.amount = user.amount.add(
             _amount.sub(_amount.mul(userDepFee).div(10000))
         );
-        user.rewardDebt = user.amount.mul(pool.accViperPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accGovTokenPerShare).div(1e12);
         devr.amount = devr.amount.add(
             _amount.sub(_amount.mul(devDepFee).div(10000))
         );
-        devr.rewardDebt = devr.amount.mul(pool.accViperPerShare).div(1e12);
+        devr.rewardDebt = devr.amount.mul(pool.accGovTokenPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
         if (user.firstDepositBlock > 0) {} else {
             user.firstDepositBlock = block.number;
@@ -622,7 +622,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
                     _amount.mul(devFeeStage[7]).div(10000)
                 );
             }
-            user.rewardDebt = user.amount.mul(pool.accViperPerShare).div(1e12);
+            user.rewardDebt = user.amount.mul(pool.accGovTokenPerShare).div(1e12);
             emit Withdraw(msg.sender, _pid, _amount);
             user.lastWithdrawBlock = block.number;
         }
@@ -642,16 +642,16 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, _pid, amountToSend);
     }
 
-    // Safe Viper transfer function, just in case if rounding error causes pool to not have enough Vipers.
-    function safeViperTransfer(address _to, uint256 _amount) internal {
-        uint256 viperBal = viper.balanceOf(address(this));
+    // Safe GovToken transfer function, just in case if rounding error causes pool to not have enough GovTokens.
+    function safeGovTokenTransfer(address _to, uint256 _amount) internal {
+        uint256 govTokenBal = govToken.balanceOf(address(this));
         bool transferSuccess = false;
-        if (_amount > viperBal) {
-            transferSuccess = viper.transfer(_to, viperBal);
+        if (_amount > govTokenBal) {
+            transferSuccess = govToken.transfer(_to, govTokenBal);
         } else {
-            transferSuccess = viper.transfer(_to, _amount);
+            transferSuccess = govToken.transfer(_to, _amount);
         }
-        require(transferSuccess, "MasterBreeder::safeViperTransfer: transfer failed");
+        require(transferSuccess, "MasterBreeder::safeGovTokenTransfer: transfer failed");
     }
 
     // Update dev address by the previous dev.
@@ -800,6 +800,6 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
     }
 
     function reclaimTokenOwnership(address _newOwner) public onlyAuthorized() {
-        viper.transferOwnership(_newOwner);
+        govToken.transferOwnership(_newOwner);
     }
 }

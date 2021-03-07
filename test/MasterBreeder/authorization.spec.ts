@@ -4,18 +4,10 @@ import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from '../shared/utilities'
 
-import { deployMasterBreeder } from './shared'
-
-import Viper from '../../build/Viper.json'
+import { deployMasterBreeder, deployGovernanceToken } from '../shared/deploy'
 
 chai.use(solidity)
 
-const overrides = {
-  gasLimit: 9999999
-}
-
-const LOCK_FROM_BLOCK = 1000
-const LOCK_TO_BLOCK = 2000
 const REWARDS_PER_BLOCK = expandTo18Decimals(1000)
 const REWARDS_START_BLOCK = 0
 const HALVING_AFTER_BLOCK_COUNT = 45360
@@ -29,48 +21,48 @@ describe('MasterBreeder::Authorization', () => {
   const wallets = provider.getWallets()
   const [alice, bob, carol, minter, dev, liquidityFund, communityFund, founderFund] = wallets
 
-  let viperToken: Contract
+  let govToken: Contract
   let breeder: Contract
   
   beforeEach(async () => {
-    viperToken = await deployContract(alice, Viper, [LOCK_FROM_BLOCK, LOCK_TO_BLOCK])
+    govToken = await deployGovernanceToken(alice)
     // 1000 VIPER per block, rewards start at block 0, rewards are halved after every 45360 blocks
-    breeder = await deployMasterBreeder(wallets, viperToken, REWARDS_PER_BLOCK, REWARDS_START_BLOCK, HALVING_AFTER_BLOCK_COUNT)
+    breeder = await deployMasterBreeder(wallets, govToken, REWARDS_PER_BLOCK, REWARDS_START_BLOCK, HALVING_AFTER_BLOCK_COUNT)
   })
 
   it("should allow the owner to reclaim ownership of the Viper token", async function () {
-    expect(await viperToken.transferOwnership(breeder.address))
+    expect(await govToken.transferOwnership(breeder.address))
 
-    expect(await viperToken.owner()).to.be.equal(breeder.address)
+    expect(await govToken.owner()).to.be.equal(breeder.address)
 
     await expect(breeder.reclaimTokenOwnership(alice.address))
-      .to.emit(viperToken, 'OwnershipTransferred')
+      .to.emit(govToken, 'OwnershipTransferred')
       .withArgs(breeder.address, alice.address)
     
-    expect(await viperToken.owner()).to.be.equal(alice.address)
+    expect(await govToken.owner()).to.be.equal(alice.address)
   })
 
   it("should allow authorized users to reclaim ownership of the Viper token", async function () {
     await breeder.addAuthorized(bob.address)
 
-    expect(await viperToken.transferOwnership(breeder.address))
+    expect(await govToken.transferOwnership(breeder.address))
 
-    expect(await viperToken.owner()).to.be.equal(breeder.address)
+    expect(await govToken.owner()).to.be.equal(breeder.address)
 
     await expect(breeder.connect(bob).reclaimTokenOwnership(bob.address))
-      .to.emit(viperToken, 'OwnershipTransferred')
+      .to.emit(govToken, 'OwnershipTransferred')
       .withArgs(breeder.address, bob.address)
     
-    expect(await viperToken.owner()).to.be.equal(bob.address)
+    expect(await govToken.owner()).to.be.equal(bob.address)
   })
 
   it("unauthorized users shouldn't be able to reclaim ownership of the token back from MasterChef", async function () {
-    expect(await viperToken.transferOwnership(breeder.address))
-    expect(await viperToken.owner()).to.be.equal(breeder.address)
+    expect(await govToken.transferOwnership(breeder.address))
+    expect(await govToken.owner()).to.be.equal(breeder.address)
 
     await expect(breeder.connect(bob).reclaimTokenOwnership(bob.address)).to.be.reverted
     
-    expect(await viperToken.owner()).to.be.equal(breeder.address)
+    expect(await govToken.owner()).to.be.equal(breeder.address)
   })
 
   it("should allow only authorized users to update the developer rewards address", async function () {

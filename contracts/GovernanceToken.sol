@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Authorizable.sol";
 
-// Viper token with Governance.
-contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
-    uint256 private _cap = 500000000e18; //500m
+// The GovernanceToken
+contract GovernanceToken is ERC20, Ownable, Authorizable {
+    uint256 private _cap;
     uint256 private _totalLock;
     uint256 public lockFromBlock;
     uint256 public lockToBlock;
-    uint256 public manualMintLimit = 50000e18; //50k
+    uint256 public manualMintLimit;
     uint256 public manualMinted = 0;
 
     mapping(address => uint256) private _locks;
@@ -20,7 +20,16 @@ contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
 
     event Lock(address indexed to, uint256 value);
 
-    constructor(uint256 _lockFromBlock, uint256 _lockToBlock) public {
+    constructor(
+      string memory _name,
+      string memory _symbol,
+      uint256 cap_,
+      uint256 _manualMintLimit,
+      uint256 _lockFromBlock,
+      uint256 _lockToBlock
+    ) public ERC20(_name, _symbol) {
+        _cap = cap_;
+        manualMintLimit = _manualMintLimit;
         lockFromBlock = _lockFromBlock;
         lockToBlock = _lockToBlock;
     }
@@ -300,13 +309,13 @@ contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
         address signatory = ecrecover(digest, v, r, s);
         require(
             signatory != address(0),
-            "VIPER::delegateBySig: invalid signature"
+            "GovernanceToken::delegateBySig: invalid signature"
         );
         require(
             nonce == nonces[signatory]++,
-            "VIPER::delegateBySig: invalid nonce"
+            "GovernanceToken::delegateBySig: invalid nonce"
         );
-        require(now <= expiry, "VIPER::delegateBySig: signature expired");
+        require(now <= expiry, "GovernanceToken::delegateBySig: signature expired");
         return _delegate(signatory, delegatee);
     }
 
@@ -335,7 +344,7 @@ contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
     {
         require(
             blockNumber < block.number,
-            "VIPER::getPriorVotes: not yet determined"
+            "GovernanceToken::getPriorVotes: not yet determined"
         );
 
         uint32 nCheckpoints = numCheckpoints[account];
@@ -418,7 +427,7 @@ contract Viper is ERC20("Viper", "VIPER"), Ownable, Authorizable {
         uint32 blockNumber =
             safe32(
                 block.number,
-                "VIPER::_writeCheckpoint: block number exceeds 32 bits"
+                "GovernanceToken::_writeCheckpoint: block number exceeds 32 bits"
             );
 
         if (
