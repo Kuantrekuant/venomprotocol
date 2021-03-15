@@ -153,8 +153,7 @@ contract MasterBreeder is Ownable, Authorizable, ReentrancyGuard {
         userFeeStage = _userFeeStage;
         devFeeStage = _devFeeStage;
         for (uint256 i = 0; i < REWARD_MULTIPLIER.length - 1; i++) {
-            uint256 halvingAtBlock =
-                _halvingAfterBlock.add(i + 1).add(_startBlock);
+            uint256 halvingAtBlock = _halvingAfterBlock.mul(i+1).add(_startBlock).add(1);
             HALVING_AT_BLOCK.push(halvingAtBlock);
         }
         FINISH_BONUS_AT_BLOCK = _halvingAfterBlock
