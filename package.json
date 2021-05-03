@@ -1,8 +1,8 @@
 {
   "name": "@venomswap/contracts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
-  "description": "🐍 Token + 🧑‍🌾 Liquidity Mining contracts for VenomSwap & the Venom Protocol",
+  "description": "Token, Liquidity Mining and Governance contracts for VenomSwap & the Venom Protocol",
   "files": [
     "contracts",
     "build"

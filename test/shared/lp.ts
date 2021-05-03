@@ -7,14 +7,15 @@ export async function createLpToken(
   pairFactory: ContractFactory,
   tokenA: Contract,
   tokenB: Contract,
-  amount: BigNumberish
+  amountA: BigNumberish,
+  amountB: BigNumberish
 ): Promise<Contract> {
   const createPairTx = await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = (await createPairTx.wait()).events[0].args.pair
   const lpContract = await pairFactory.attach(pairAddress)
 
-  await tokenA.transfer(lpContract.address, amount)
-  await tokenB.transfer(lpContract.address, amount)
+  await tokenA.transfer(lpContract.address, amountA)
+  await tokenB.transfer(lpContract.address, amountB)
 
   await lpContract.mint(wallet.address)
 
