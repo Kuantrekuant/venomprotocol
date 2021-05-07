@@ -64,19 +64,19 @@ describe('PitBreeder', () => {
     await link.transfer(alice.address, expandTo18Decimals(100000))
 
     pairs = {
-      'viper/weth': await createLpToken(alice, factory, pairFactory, govToken, weth, expandTo18Decimals(1000)),
-      'viper/busd': await createLpToken(alice, factory, pairFactory, govToken, busd, expandTo18Decimals(1000)),
-      'viper/dai': await createLpToken(alice, factory, pairFactory, govToken, dai, expandTo18Decimals(1000)),
+      'viper/weth': await createLpToken(alice, factory, pairFactory, govToken, weth, expandTo18Decimals(1000), expandTo18Decimals(1000)),
+      'viper/busd': await createLpToken(alice, factory, pairFactory, govToken, busd, expandTo18Decimals(1000), expandTo18Decimals(1000)),
+      'viper/dai': await createLpToken(alice, factory, pairFactory, govToken, dai, expandTo18Decimals(1000), expandTo18Decimals(1000)),
       //'viper/link': await createLpToken(alice, factory, pairFactory, govToken, link, expandTo18Decimals(1000)),
 
-      'busd/weth': await createLpToken(alice, factory, pairFactory, busd, weth, expandTo18Decimals(1000)),
-      'busd/dai': await createLpToken(alice, factory, pairFactory, busd, dai, expandTo18Decimals(1000)),
-      'busd/link': await createLpToken(alice, factory, pairFactory, busd, link, expandTo18Decimals(1000)),
+      'busd/weth': await createLpToken(alice, factory, pairFactory, busd, weth, expandTo18Decimals(1000), expandTo18Decimals(1000)),
+      'busd/dai': await createLpToken(alice, factory, pairFactory, busd, dai, expandTo18Decimals(1000), expandTo18Decimals(1000)),
+      'busd/link': await createLpToken(alice, factory, pairFactory, busd, link, expandTo18Decimals(1000), expandTo18Decimals(1000)),
 
-      'dai/weth': await createLpToken(alice, factory, pairFactory, dai, weth, expandTo18Decimals(1000)),
-      'dai/link': await createLpToken(alice, factory, pairFactory, dai, link, expandTo18Decimals(1000)),
+      'dai/weth': await createLpToken(alice, factory, pairFactory, dai, weth, expandTo18Decimals(1000), expandTo18Decimals(1000)),
+      'dai/link': await createLpToken(alice, factory, pairFactory, dai, link, expandTo18Decimals(1000), expandTo18Decimals(1000)),
 
-      'link/weth': await createLpToken(alice, factory, pairFactory, link, weth, expandTo18Decimals(1000)),
+      'link/weth': await createLpToken(alice, factory, pairFactory, link, weth, expandTo18Decimals(1000), expandTo18Decimals(1000)),
     }
   })
 
@@ -160,6 +160,7 @@ describe('PitBreeder', () => {
     })
 
     it("converts DAI/LINK using two step path", async function () {
+      this.timeout(0)
       await pairs['dai/link'].transfer(pitBreeder.address, expandTo18Decimals(100))
 
       await pitBreeder.setBridge(dai.address, busd.address)
@@ -169,7 +170,7 @@ describe('PitBreeder', () => {
       expect(await govToken.balanceOf(pitBreeder.address)).to.equal(0)
       expect(await pairs['dai/link'].balanceOf(pitBreeder.address)).to.equal(0)
       expect(await govToken.balanceOf(pit.address)).to.equal("120096301672136374965")
-    })
+    }).retries(10)
 
     it("reverts if caller is not EOA", async function () {
       this.timeout(0)

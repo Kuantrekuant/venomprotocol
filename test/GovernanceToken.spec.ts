@@ -19,7 +19,7 @@ const MANUAL_MINT_LIMIT = expandTo18Decimals(50000)
 const LOCK_FROM_BLOCK = 100
 const LOCK_TO_BLOCK = 200
 
-describe('Viper', () => {
+describe('GovernanceToken', () => {
   const provider = new MockProvider({
     hardfork: 'istanbul',
     mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
