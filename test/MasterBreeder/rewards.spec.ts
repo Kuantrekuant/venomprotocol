@@ -167,7 +167,7 @@ describe('MasterBreeder::Rewards', () => {
       await breeder.connect(bob).deposit(1, expandTo18Decimals(100), ZERO_ADDRESS)
 
       // Advance 10 blocks, then claim rewards from all pools
-      advanceBlockWith(provider, 10) 
+      advanceBlockWith(provider, 10)
       await breeder.connect(bob).claimRewards([0, 1])
 
       expect('claimReward').to.be.calledOnContractWith(breeder, [0]);
