@@ -204,7 +204,7 @@ describe('PitBreeder', () => {
       expect(await govToken.balanceOf(pitBreeder.address)).to.equal(0)
       expect(await pairs['dai/weth'].balanceOf(pitBreeder.address)).to.equal(0)
       expect(await govToken.balanceOf(pit.address)).to.equal("318658355868778309848")
-    })
+    }).retries(10)
   })
 
 })
