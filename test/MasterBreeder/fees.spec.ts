@@ -10,7 +10,8 @@ import ERC20Mock from '../../build/ERC20Mock.json'
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 const debugMessages = false
-const amount = expandTo18Decimals(100)
+const mintAmount = expandTo18Decimals(1000)
+const depositAmount = expandTo18Decimals(100)
 
 chai.use(solidity)
 
@@ -31,14 +32,14 @@ describe('MasterBreeder::Fees', () => {
     govToken = await deployGovernanceToken(alice)
 
     lp = await deployContract(minter, ERC20Mock, ["LPToken", "LP", expandTo18Decimals(1000000)])
-    await lp.transfer(alice.address, amount)
-    await lp.transfer(bob.address, amount)
-    await lp.transfer(carol.address, amount)
+    await lp.transfer(alice.address, mintAmount)
+    await lp.transfer(bob.address, mintAmount)
+    await lp.transfer(carol.address, mintAmount)
 
     lp2 = await deployContract(minter, ERC20Mock, ["LPToken2", "LP2", expandTo18Decimals(1000000)])
-    await lp2.transfer(alice.address, amount)
-    await lp2.transfer(bob.address, amount)
-    await lp2.transfer(carol.address, amount)
+    await lp2.transfer(alice.address, mintAmount)
+    await lp2.transfer(bob.address, mintAmount)
+    await lp2.transfer(carol.address, mintAmount)
   })
 
   it("should be able to set deposit fees to zero", async function () {
@@ -114,18 +115,29 @@ describe('MasterBreeder::Fees', () => {
     expect(await breeder.poolExistence(lp.address)).to.equal(true)
     const poolId = 0
 
-    await lp.connect(bob).approve(breeder.address, expandTo18Decimals(1000))
-    await breeder.connect(bob).deposit(poolId, amount, ZERO_ADDRESS)
-
-    const userInfo = await breeder.userInfo(poolId, bob.address)
-    if (debugMessages) console.log(`Staked amount of lp token ${lp.address} in pool ${poolId} by ${bob.address} is: ${utils.formatEther(userInfo.amount)}`)
-    expect(userInfo.amount).to.eq(amount)
+    await lp.connect(bob).approve(breeder.address, mintAmount)
+    
+    await breeder.connect(bob).deposit(poolId, depositAmount, ZERO_ADDRESS)
 
     const devAddress = await breeder.devaddr()
     if (debugMessages) console.log(`Dev address is: ${devAddress}`)
     expect(devAddress.length).to.be.greaterThan(0)
 
-    const devUserInfo = await breeder.userInfo(poolId, devAddress)
+    let userInfo = await breeder.userInfo(poolId, bob.address)
+    if (debugMessages) console.log(`Staked amount of lp token ${lp.address} in pool ${poolId} by ${bob.address} is: ${utils.formatEther(userInfo.amount)}`)
+    expect(userInfo.amount).to.eq(depositAmount)
+
+    let devUserInfo = await breeder.userInfo(poolId, devAddress)
+    if (debugMessages) console.log(`Staked amount of lp token ${lp.address} in pool ${poolId} by dev address ${devAddress} is: ${utils.formatEther(devUserInfo.amount)}`)
+    expect(devUserInfo.amount).to.equal('0')
+
+    await breeder.connect(bob).deposit(poolId, depositAmount, ZERO_ADDRESS)
+
+    userInfo = await breeder.userInfo(poolId, bob.address)
+    if (debugMessages) console.log(`Staked amount of lp token ${lp.address} in pool ${poolId} by ${bob.address} is: ${utils.formatEther(userInfo.amount)}`)
+    expect(userInfo.amount).to.eq(depositAmount.mul(2))
+
+    devUserInfo = await breeder.userInfo(poolId, devAddress)
     if (debugMessages) console.log(`Staked amount of lp token ${lp.address} in pool ${poolId} by dev address ${devAddress} is: ${utils.formatEther(devUserInfo.amount)}`)
     expect(devUserInfo.amount).to.equal('0')
 
@@ -146,12 +158,12 @@ describe('MasterBreeder::Fees', () => {
     expect(bobTotalBalanceOf).to.gt('0')
 
     await advanceBlockTo(provider, rewardsStartAtBlock*2)
-    await breeder.connect(bob).withdraw(poolId, amount, ZERO_ADDRESS)
+    await breeder.connect(bob).withdraw(poolId, depositAmount.mul(2), ZERO_ADDRESS)
 
     // Withdrawal fees are still active - user will end up with a lesser balance of LP tokens
     const lpBalance = await lp.balanceOf(bob.address)
     if (debugMessages) console.log(`Current lp token ${lp.address} balance for ${bob.address} is: ${utils.formatEther(lpBalance)}`)
-    expect(lpBalance).to.eq(amount.sub(expandTo18Decimals(8)))
+    expect(lpBalance).to.eq(mintAmount.sub(expandTo18Decimals(16)))
   })
 
 })
