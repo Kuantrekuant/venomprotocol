@@ -134,8 +134,8 @@ contract GovernanceVote {
     uint256 pairTotal = lpPair.totalSupply();
     
     // Calculate lp share voting power
-    uint256 userShare = userLpTokenAmountInPool.mul(100).div(pairTotal);
-    uint256 pairUnderlying = govTokenCurrentReserve.mul(userShare).div(100);
+    uint256 userShare = userLpTokenAmountInPool.mul(1e12).div(pairTotal);
+    uint256 pairUnderlying = govTokenCurrentReserve.mul(userShare).div(1e12);
     votingPower = pairUnderlying.mul(_lpMultiplier);
 
     // Add single-staking voting power
