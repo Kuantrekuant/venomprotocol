@@ -36,17 +36,17 @@ contract GovernanceVote {
     uint8 lpMultiplier_,
     uint8 singleStakingMultiplier_
   ) public {
-      _name = name_;
-      _symbol = symbol_;
-      _decimals = 18;
-      govToken = govToken_;
-      pit = pit_;
-      masterBreeder = masterBreeder_;
-      _poolId = poolId_;
-      lpPair = lpPair_;
-      _govTokenReservePosition = govTokenReservePosition_;
-      _lpMultiplier = lpMultiplier_;
-      _singleStakingMultiplier = singleStakingMultiplier_;
+    _name = name_;
+    _symbol = symbol_;
+    _decimals = 18;
+    govToken = govToken_;
+    pit = pit_;
+    masterBreeder = masterBreeder_;
+    _poolId = poolId_;
+    lpPair = lpPair_;
+    _govTokenReservePosition = govTokenReservePosition_;
+    _lpMultiplier = lpMultiplier_;
+    _singleStakingMultiplier = singleStakingMultiplier_;
   }
 
   function name() public view virtual returns (string memory) {
@@ -79,6 +79,19 @@ contract GovernanceVote {
     return _govTokenReserve;
   }
 
+  function pitRatio() public view returns (uint256) {
+    uint256 pitTotalSupply = pit.totalSupply();
+    uint256 govTokenPitBalance = govToken.balanceOf(address(pit));
+    if (pitTotalSupply > 0 && govTokenPitBalance > 0) {
+      return govTokenPitBalance.mul(10 ** 18).div(pitTotalSupply);
+    }
+    return uint256(1).mul(10 ** 18);
+  }
+
+  function adjustedPitValue(uint256 value) public view returns (uint256) {
+    return value.mul(pitRatio()).div(10 ** 18);
+  }
+
   function totalSupply() public view returns (uint256) {
     uint256 govTokenCurrentReserve = govTokenReserve();
     uint256 pitTotalSupply = pit.totalSupply();
@@ -94,7 +107,9 @@ contract GovernanceVote {
 
     // pitTotalSupply x _singleStakingMultiplier (e.g. 2) tokens are added to the total supply
     if (pitTotalSupply > 0) {
-      calculatedTotalSupply = calculatedTotalSupply.add(pitTotalSupply.mul(_singleStakingMultiplier));
+      calculatedTotalSupply = calculatedTotalSupply.add(
+        adjustedPitValue(pitTotalSupply).mul(_singleStakingMultiplier)
+      );
     }
 
     // 33% of locked tokens are added to the total supply
@@ -126,7 +141,9 @@ contract GovernanceVote {
     // Add single-staking voting power
     uint256 pitBalance = pit.balanceOf(owner);
     if (pitBalance > 0) {
-      votingPower = votingPower.add(pitBalance.mul(_singleStakingMultiplier));
+      votingPower = votingPower.add(
+        adjustedPitValue(pitBalance).mul(_singleStakingMultiplier)
+      );
     }
     
     // Add locked balance
