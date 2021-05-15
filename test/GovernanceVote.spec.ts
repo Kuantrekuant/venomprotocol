@@ -30,7 +30,7 @@ const MULTIPLIERS = {
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
-const debugMessages = true
+const debugMessages = false
 
 describe('GovernanceVote', () => {
   const provider = new MockProvider({
