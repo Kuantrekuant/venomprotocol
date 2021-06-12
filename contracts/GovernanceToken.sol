@@ -125,7 +125,10 @@ contract GovernanceToken is ERC20, Ownable, Authorizable {
     }
 
     function manualMint(address _to, uint256 _amount) public onlyAuthorized {
-        require(manualMinted < manualMintLimit, "ERC20: manualMinted greater than manualMintLimit");
+        require(
+            manualMinted.add(_amount) <= manualMintLimit,
+            "ERC20: sum of manualMinted and amount greater than manualMintLimit"
+        );
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
         manualMinted = manualMinted.add(_amount);
