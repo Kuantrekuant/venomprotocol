@@ -3,7 +3,8 @@ import { Contract, ContractFactory, utils } from 'ethers'
 import { BigNumber } from 'ethers/utils'
 import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
-import { expandTo18Decimals, advanceBlockWith, humanBalance } from './shared/utilities'
+import { expandTo18Decimals, humanBalance } from './shared/utilities'
+import { advanceBlockWith } from './shared/time'
 
 import { deployGovernanceToken, deployMasterBreeder } from './shared/deploy'
 

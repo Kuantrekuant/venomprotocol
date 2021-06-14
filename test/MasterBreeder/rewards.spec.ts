@@ -2,7 +2,8 @@ import chai, { expect } from 'chai'
 import { Contract, utils } from 'ethers'
 import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
-import { expandTo18Decimals, advanceBlockTo, advanceBlockWith, latestBlock, humanBalance } from '../shared/utilities'
+import { expandTo18Decimals, humanBalance } from '../shared/utilities'
+import { advanceBlockTo, advanceBlockWith, latestBlock } from '../shared/time'
 
 import { deployMasterBreeder, deployGovernanceToken, TOKEN_NAME, TOKEN_SYMBOL, TOTAL_CAP, MANUAL_MINT_LIMIT } from '../shared/deploy'
 
