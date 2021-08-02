@@ -3,7 +3,8 @@ import { Contract, ContractFactory, utils } from 'ethers'
 import { BigNumber } from 'ethers/utils'
 import { solidity, MockProvider, deployContract } from 'ethereum-waffle'
 
-import { expandTo18Decimals, advanceBlockWith, humanBalance } from './shared/utilities'
+import { expandTo18Decimals, humanBalance } from './shared/utilities'
+import { advanceBlockWith } from './shared/time'
 
 import { deployGovernanceToken, deployMasterBreeder } from './shared/deploy'
 
@@ -134,8 +135,11 @@ describe('GovernanceVote', () => {
     await govToken.lock(alice.address, lockAmount)
 
     const pitTotalSupply = await pit.totalSupply()
-    if (debugMessages) console.log(`pit -> totalSupply: ${utils.formatEther(pitTotalSupply.toString())}`)
-    expect(pitTotalSupply).to.eq(PIT_BALANCE)
+    const pitRatio = await govVote.pitRatio()
+    const adjustedPitTotalSupply = await govVote.adjustedPitValue(pitTotalSupply)
+    if (debugMessages) console.log(`pit -> pitRatio: ${utils.formatEther(pitRatio.toString())}`)
+    if (debugMessages) console.log(`pit -> totalSupply: ${utils.formatEther(adjustedPitTotalSupply.toString())}`)
+    expect(adjustedPitTotalSupply).to.eq(PIT_BALANCE)
 
     const govTokenUnlockedTotal = await govToken.unlockedSupply()
     if (debugMessages) console.log(`govToken -> unlockedSupply: ${utils.formatEther(govTokenUnlockedTotal.toString())}`)
@@ -204,8 +208,11 @@ describe('GovernanceVote', () => {
     if (debugMessages) console.log(`Number of underlying gov tokens in lp pair: ${utils.formatEther(pairUnderlying.toString())}`)
 
     const pitBalance = await pit.balanceOf(alice.address)
-    if (debugMessages) console.log(`pit -> totalBalance: ${utils.formatEther(pitBalance.toString())}`)
-    expect(pitBalance).to.eq(PIT_BALANCE)
+    const pitRatio = await govVote.pitRatio()
+    const adjustedPitBalance = await govVote.adjustedPitValue(pitBalance)
+    if (debugMessages) console.log(`pit -> pitRatio: ${utils.formatEther(pitRatio.toString())}`)
+    if (debugMessages) console.log(`pit -> totalBalance: ${utils.formatEther(adjustedPitBalance.toString())}`)
+    expect(adjustedPitBalance).to.eq(PIT_BALANCE)
 
     const govTokenLockOf = await govToken.lockOf(alice.address)
     if (debugMessages) console.log(`govToken -> lockOf: ${utils.formatEther(govTokenLockOf.toString())}`)

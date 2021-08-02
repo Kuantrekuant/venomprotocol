@@ -170,7 +170,7 @@ describe('PitBreeder', () => {
       expect(await govToken.balanceOf(pitBreeder.address)).to.equal(0)
       expect(await pairs['dai/link'].balanceOf(pitBreeder.address)).to.equal(0)
       expect(await govToken.balanceOf(pit.address)).to.equal("120096301672136374965")
-    }).retries(10)
+    }).retries(25)
 
     it("reverts if caller is not EOA", async function () {
       this.timeout(0)
@@ -191,7 +191,7 @@ describe('PitBreeder', () => {
       expect(await govToken.balanceOf(pitBreeder.address)).to.equal(0)
       expect(await pairs['busd/link'].balanceOf(pitBreeder.address)).to.equal(expandTo18Decimals(100))
       expect(await govToken.balanceOf(pit.address)).to.equal(0)
-    }).retries(5)
+    }).retries(25)
   })
 
   describe("convertMultiple", function () {
@@ -204,7 +204,7 @@ describe('PitBreeder', () => {
       expect(await govToken.balanceOf(pitBreeder.address)).to.equal(0)
       expect(await pairs['dai/weth'].balanceOf(pitBreeder.address)).to.equal(0)
       expect(await govToken.balanceOf(pit.address)).to.equal("318658355868778309848")
-    }).retries(10)
+    }).retries(25)
   })
 
 })
